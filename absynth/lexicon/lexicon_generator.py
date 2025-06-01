@@ -1,6 +1,9 @@
 import numpy as np
 from collections import defaultdict, Counter
 import random
+from typing import Dict, List, Any, Optional
+from .vocab import Vocabulary
+from .semantic_roles import SemanticFrame, SemanticRoles
 
 
 class LexiconGenerator:
@@ -9,20 +12,26 @@ class LexiconGenerator:
     for next token prediction tasks.
     """
     
-    def __init__(self, vocab_sizes):
+    def __init__(self, vocab_sizes: Vocabulary = None, num_clusters: int = 5):
         """
         Initialize with vocabulary sizes for each word category.
         
         Args:
             vocab_sizes: Dictionary mapping word categories to vocabulary sizes
         """
-        self.vocab_sizes = vocab_sizes
+        self.vocab_sizes = vocab_sizes or Vocabulary()
+        self._num_clusters = num_clusters
         self.lexicon = self._generate_lexicon()
         self.semantic_clusters = self._create_semantic_clusters()
         self.word_probabilities = self._create_zipfian_distributions()
         self.collocations = self._establish_collocations()
-    
-    def _generate_lexicon(self):
+
+        self.semantic_frames = SemanticRoles.get_standard_frames() # todo, revise add the semantic clusters
+        # Usage tracking
+        self.used_words = {cat: set() for cat in self.word_probabilities.keys()}
+        self.word_counts = {cat: Counter() for cat in self.word_probabilities.keys()}
+
+    def _generate_lexicon(self) -> Dict[str, List[str]]:
         """Create a lexicon with synthetic words for each category.
         We use POS tags as prefixes to create unique words, though this can be changed to any words selection"""
 
@@ -66,7 +75,7 @@ class LexiconGenerator:
 
         return context
 
-    def _create_zipfian_distributions(self, alpha=1.05, error_bias=0.0000001):
+    def _create_zipfian_distributions(self, alpha: float=1.05, error_bias:float=0.0000001) -> Dict[str, Dict[str, float]]:
         """Create Zipfian probability distributions for words in each category."""
         distributions = {}
         
@@ -83,14 +92,14 @@ class LexiconGenerator:
         
         return distributions
     
-    def _create_semantic_clusters(self, num_clusters=5):
+    def _create_semantic_clusters(self) -> Dict[str, Dict[str, List[str]]]:
         """Create semantic clusters for realistic word associations."""
         clusters = {}
         
         # Create noun clusters
         if "noun" in self.lexicon:
             nouns = self.lexicon["noun"]
-            noun_clusters = np.array_split(nouns, num_clusters)  # Split nouns into clusters
+            noun_clusters = np.array_split(nouns, self._num_clusters)  # Split nouns into clusters
             clusters["noun"] = {
                 f"cluster_{i}": list(cluster) for i, cluster in enumerate(noun_clusters)
             }
@@ -98,16 +107,16 @@ class LexiconGenerator:
         # Create adjective clusters that semantically align with noun clusters
         if "adjective" in self.lexicon:
             adjectives = self.lexicon["adjective"]
-            adj_clusters = np.array_split(adjectives, num_clusters) # Split nouns into clusters
+            adj_clusters = np.array_split(adjectives, self._num_clusters) # Split nouns into clusters
             clusters["adjective"] = {
                 f"cluster_{i}": list(cluster) for i, cluster in enumerate(adj_clusters)
             }
         
         # Create verb clusters
         for verb_type in ["transitive_verb", "intransitive_verb", "communication_verb", "motion_verb"]:
-            if verb_type in self.lexicon and len(self.lexicon[verb_type]) >= num_clusters:
+            if verb_type in self.lexicon and len(self.lexicon[verb_type]) >= self._num_clusters:
                 verbs = self.lexicon[verb_type]
-                verb_clusters = np.array_split(verbs, num_clusters)
+                verb_clusters = np.array_split(verbs, self._num_clusters)
                 clusters[verb_type] = {
                     f"cluster_{i}": list(cluster) for i, cluster in enumerate(verb_clusters)
                 }
@@ -115,7 +124,7 @@ class LexiconGenerator:
         return clusters
 
 
-    def _establish_collocations(self):
+    def _establish_collocations(self) -> Dict[str, Dict[str, float]]:
         """Establish collocational preferences between words for realistic co-occurrence."""
         collocations = defaultdict(dict)
 
@@ -178,7 +187,7 @@ class LexiconGenerator:
 
         return collocations
 
-    def sample_word(self, category, context=None):
+    def sample_word(self, category, context=None) -> str:
         """
         Sample a word with entropy-aware selection to ensure balanced predictability.
 
@@ -244,19 +253,43 @@ class LexiconGenerator:
 
         return word
 
-    def export_lexicon_details(self):
-        """
-        Export detailed lexicon information for analysis.
-        
-        Returns:
-            Dictionary with comprehensive lexicon information
-        """
+    def get_semantic_frame(self, frame_name: str) -> Optional[SemanticFrame]:
+        """Get a semantic frame by name."""
+        return self.semantic_frames.get(frame_name)
+
+    # def export_lexicon_details(self) -> Dict[str, Any]:
+    #     """
+    #     Export detailed lexicon information for analysis.
+    #
+    #     Returns:
+    #         Dictionary with comprehensive lexicon information
+    #     """
+    #     return {
+    #         "vocabulary_sizes": self.vocab_sizes,
+    #         "lexicon": self.lexicon,
+    #         "zipfian_distributions": {
+    #             category: {word: float(prob) for word, prob in probs.items()}
+    #             for category, probs in self.word_probabilities.items()
+    #         },
+    #         "semantic_clusters": self.semantic_clusters
+    #     }
+    def export_lexicon_details(self) -> Dict:
+        """Export comprehensive lexicon information."""
         return {
-            "vocabulary_sizes": self.vocab_sizes,
+            "vocabulary_sizes": dict(self.vocab_sizes.items()),
             "lexicon": self.lexicon,
             "zipfian_distributions": {
                 category: {word: float(prob) for word, prob in probs.items()}
                 for category, probs in self.word_probabilities.items()
             },
-            "semantic_clusters": self.semantic_clusters
+            "semantic_clusters": self.semantic_clusters,
+            "semantic_frames": {
+                name: {
+                    "frame_name": frame.frame_name,
+                    "core_roles": [role.value for role in frame.core_roles],
+                    "optional_roles": [role.value for role in frame.optional_roles],
+                    "pos_mapping": {role.value: pos for role, pos in frame.pos_mapping.items()}
+                }
+                for name, frame in self.semantic_frames.items()
+            }
         }

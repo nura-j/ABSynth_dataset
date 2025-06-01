@@ -1,0 +1,1 @@
+from absynth.lexicon import *
