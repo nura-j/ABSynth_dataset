@@ -351,3 +351,10 @@ class FrameManager:
             return dict(sorted_templates[:top_n])
         return self.template_usage.copy()
 
+    def set_template_weights(self, weights: Dict[str, float]) -> None:
+        """Set custom weights for templates."""
+        for complexity in self.templates:
+            for template_name in self.templates[complexity]:
+                if template_name in weights:
+                    self.templates[complexity][template_name]['weight'] = weights[template_name]
+

@@ -15,7 +15,7 @@ class SentenceGenerator:
     Generates sentences with semantic frame structure and rich linguistic annotations.
     """
 
-    def __init__(self, lexicon_generator: Optional[LinguisticAnnotator] = None, frame_manager: Optional[FrameManager] = None):
+    def __init__(self, lexicon_generator: Optional[LexiconGenerator] = None, frame_manager: Optional[FrameManager] = None):
         """
         Initialize sentence generator.
 
