@@ -12,24 +12,46 @@ class LexiconGenerator:
     for next token prediction tasks.
     """
     
-    def __init__(self, vocab_sizes: Vocabulary = None, num_clusters: int = 5):
+    def __init__(self, vocab_sizes: Vocabulary = None,
+                 num_clusters: int = 5,
+                 additional_semantic_frames: Optional[List[SemanticFrame]] = None,
+                 zipfian_alpha: float = 1.05,
+                 error_bias: float = 0.0000001,
+                 random_seed: Optional[int] = None):
         """
         Initialize with vocabulary sizes for each word category.
         
         Args:
             vocab_sizes: Dictionary mapping word categories to vocabulary sizes
         """
+        if random_seed is not None:
+            random.seed(random_seed)
+            np.random.seed(random_seed)
         self.vocab_sizes = vocab_sizes or Vocabulary()
         self._num_clusters = num_clusters
+        self.zipfian_alpha = zipfian_alpha
+        self.error_bias = error_bias
+
         self.lexicon = self._generate_lexicon()
         self.semantic_clusters = self._create_semantic_clusters()
         self.word_probabilities = self._create_zipfian_distributions()
         self.collocations = self._establish_collocations()
 
-        self.semantic_frames = SemanticRoles.get_standard_frames() # todo, revise add the semantic clusters
+        self.semantic_frames = SemanticRoles.get_standard_frames()
+        if additional_semantic_frames:
+            for frame in additional_semantic_frames:
+                self.add_semantic_frame(frame)
         # Usage tracking
         self.used_words = {cat: set() for cat in self.word_probabilities.keys()}
         self.word_counts = {cat: Counter() for cat in self.word_probabilities.keys()}
+
+        # Initialize entropy tracking
+        self.entropy_counts = {
+            'high_predictability': 0,  # entropy < 1.5
+            'medium_predictability': 0,  # 1.5 <= entropy < 3.0
+            'low_predictability': 0  # entropy >= 3.0
+        }
+        self.total_entropy_samples = 0
 
     def _generate_lexicon(self) -> Dict[str, List[str]]:
         """Create a lexicon with synthetic words for each category.
@@ -40,7 +62,7 @@ class LexiconGenerator:
             lexicon[pos] = [f"{pos}{i}" for i in range(1, size + 1)]
         return lexicon
 
-    def _adjust_for_target_entropy_distribution(self, context):
+    def _adjust_for_target_entropy_distribution(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Adjust the context to ensure proper entropy distribution in the corpus.
 
@@ -52,14 +74,6 @@ class LexiconGenerator:
         Returns:
             Updated context
         """
-        # Track corpus-level entropy statistics
-        if not hasattr(self, 'entropy_counts'):
-            self.entropy_counts = {
-                'high_predictability': 0,  # entropy < 1.5
-                'medium_predictability': 0,  # 1.5 <= entropy < 3.0
-                'low_predictability': 0  # entropy >= 3.0
-            }
-            self.total_entropy_samples = 0
 
         # Calculate current distribution
         total = sum(self.entropy_counts.values())
@@ -75,7 +89,7 @@ class LexiconGenerator:
 
         return context
 
-    def _create_zipfian_distributions(self, alpha: float=1.05, error_bias:float=0.0000001) -> Dict[str, Dict[str, float]]:
+    def _create_zipfian_distributions(self) -> Dict[str, Dict[str, float]]:
         """Create Zipfian probability distributions for words in each category."""
         distributions = {}
         
@@ -83,9 +97,9 @@ class LexiconGenerator:
             # Generate ranks
             ranks = np.arange(1, len(words) + 1)
             # Calculate probabilities using Zipf's law
-            probs = 1.0 / (ranks ** alpha)
+            probs = 1.0 / (ranks ** self.zipfian_alpha)
             # Normalize to sum to 1
-            probs = (probs+error_bias) / (probs.sum()+error_bias)
+            probs = (probs+self.error_bias) / (probs.sum()+self.error_bias)
             
             # Map words to probabilities
             distributions[category] = {word: prob for word, prob in zip(words, probs)}
@@ -127,6 +141,11 @@ class LexiconGenerator:
     def _establish_collocations(self) -> Dict[str, Dict[str, float]]:
         """Establish collocational preferences between words for realistic co-occurrence."""
         collocations = defaultdict(dict)
+        # Define collocation strength constants
+        STRONG_BASE, STRONG_VARIANCE = 0.4, 0.3  # Range 0.4-0.7
+        MEDIUM_BASE, MEDIUM_VARIANCE = 0.3, 0.3  # Range 0.3-0.6
+        WEAK_BASE, WEAK_VARIANCE = 0.05, 0.2  # Range 0.05-0.25
+        VERY_WEAK_BASE, VERY_WEAK_VARIANCE = 0.05, 0.15  # Range 0.05-0.2
 
         # Create adjective-noun (NP) collocations with more variety
         if "noun" in self.semantic_clusters and "adjective" in self.semantic_clusters:
@@ -139,14 +158,14 @@ class LexiconGenerator:
                     # Strong association with adjectives in the same cluster, but more varied
                     for adj in adj_cluster:
                         # Add noise to create more medium-predictability contexts
-                        collocations[noun][adj] = 0.4 + random.random() * 0.3  # Range 0.4-0.7
+                        collocations[noun][adj] = STRONG_BASE + random.random() * STRONG_VARIANCE  # Range 0.4-0.7
 
                     # Weaker association with adjectives in other clusters, but still exist
                     for j in range(len(self.semantic_clusters["adjective"])):
                         if j != i:
                             for adj in self.semantic_clusters["adjective"][f"cluster_{j}"]:
                                 # Add noise for more natural distributions
-                                collocations[noun][adj] = 0.05 + random.random() * 0.15  # Range 0.05-0.2
+                                collocations[noun][adj] = VERY_WEAK_BASE + random.random() * VERY_WEAK_VARIANCE  # Range 0.05-0.2
 
         # Create verb-noun (object) collocations with more balanced predictability
         if "noun" in self.semantic_clusters:
@@ -159,13 +178,13 @@ class LexiconGenerator:
                         noun_cluster = self.semantic_clusters["noun"][f"cluster_{i}"]
                         for verb in verb_c:
                             for noun in noun_cluster:
-                                collocations[verb][noun] = 0.3 + random.random() * 0.3 # Range 0.3-0.6
+                                collocations[verb][noun] = MEDIUM_BASE + random.random() * MEDIUM_VARIANCE # Range 0.3-0.6
 
                             # Connections to other clusters but weaker
                             for j in range(len(self.semantic_clusters["noun"])):
                                 if j != i:
                                     for noun in self.semantic_clusters["noun"][f"cluster_{j}"]:
-                                        collocations[verb][noun] = 0.05 + random.random() * 0.2 # Range 0.05-0.25
+                                        collocations[verb][noun] = WEAK_BASE + random.random() * WEAK_VARIANCE # Range 0.05-0.25
 
         # Add collocations for adverbs and verbs (VP)
         if "adverb" in self.lexicon and "transitive_verb" in self.lexicon:
@@ -173,8 +192,8 @@ class LexiconGenerator:
             verbs = self.lexicon["transitive_verb"] + self.lexicon.get("intransitive_verb", [])
 
             # Create adverb clusters aligned with verb semantics
-            adverb_clusterss = np.array_split(adverbs, min(5, len(adverbs)))
-            verb_clustes = np.array_split(verbs, min(5, len(adverbs)))
+            adverb_clusterss = np.array_split(adverbs, min(self._num_clusters, len(adverbs)))
+            verb_clustes = np.array_split(verbs, min(self._num_clusters, len(adverbs)))
 
             for i in range(min(len(adverb_clusterss), len(verb_clustes))):
                 adv_cluster = adverb_clusterss[i]
@@ -183,7 +202,7 @@ class LexiconGenerator:
                 for verb in verb_cluster:
                     for adv in adv_cluster:
                         # Medium-strength collocations (not too predictable, not too random)
-                        collocations[verb][adv] = 0.3 + random.random() * 0.2
+                        collocations[verb][adv] = MEDIUM_BASE + random.random() * WEAK_VARIANCE
 
         return collocations
 
@@ -255,24 +274,14 @@ class LexiconGenerator:
 
     def get_semantic_frame(self, frame_name: str) -> Optional[SemanticFrame]:
         """Get a semantic frame by name."""
-        return self.semantic_frames.get(frame_name)
+        return self.semantic_frames.get(frame_name, None)
 
-    # def export_lexicon_details(self) -> Dict[str, Any]:
-    #     """
-    #     Export detailed lexicon information for analysis.
-    #
-    #     Returns:
-    #         Dictionary with comprehensive lexicon information
-    #     """
-    #     return {
-    #         "vocabulary_sizes": self.vocab_sizes,
-    #         "lexicon": self.lexicon,
-    #         "zipfian_distributions": {
-    #             category: {word: float(prob) for word, prob in probs.items()}
-    #             for category, probs in self.word_probabilities.items()
-    #         },
-    #         "semantic_clusters": self.semantic_clusters
-    #     }
+    def add_semantic_frame(self, frame: SemanticFrame) -> None:
+        """Add a new semantic frame to the lexicon."""
+        if frame.frame_name in self.semantic_frames:
+            raise ValueError(f"Frame '{frame.frame_name}' already exists.")
+        self.semantic_frames[frame.frame_name] = frame
+
     def export_lexicon_details(self) -> Dict:
         """Export comprehensive lexicon information."""
         return {
