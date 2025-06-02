@@ -28,12 +28,14 @@ class SemanticFrame:
     core_roles: List[SemanticRole]
     optional_roles: List[SemanticRole] = None
     pos_mapping: Dict[SemanticRole, str] = None
+    weight: float = None # Default weight for the frame
 
     def __post_init__(self):
         if self.optional_roles is None:
             self.optional_roles = []
         if self.pos_mapping is None:
             self.pos_mapping = {}
+
 
 
 class SemanticRoles:
@@ -52,12 +54,13 @@ class SemanticRoles:
                 core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT],
                 optional_roles=[SemanticRole.INSTRUMENT, SemanticRole.LOCATION, SemanticRole.TIME],
                 pos_mapping={
-                    SemanticRole.AGENT: "noun",
-                    SemanticRole.PATIENT: "noun",
-                    SemanticRole.INSTRUMENT: "noun",
-                    SemanticRole.LOCATION: "location",
-                    SemanticRole.TIME: "temporal"
-                }
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.PATIENT: "noun",
+                        SemanticRole.INSTRUMENT: "noun",
+                        SemanticRole.LOCATION: "location",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.2
             ),
 
             "intransitive_action": SemanticFrame(
@@ -65,33 +68,195 @@ class SemanticRoles:
                 core_roles=[SemanticRole.AGENT],
                 optional_roles=[SemanticRole.LOCATION, SemanticRole.TIME],
                 pos_mapping={
-                    SemanticRole.AGENT: "noun",
-                    SemanticRole.LOCATION: "location",
-                    SemanticRole.TIME: "temporal"
-                }
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.LOCATION: "location",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.20
             ),
-
+            "basic_transitive": SemanticFrame(
+                frame_name="basic_transitive",
+                core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT],
+                optional_roles=[],
+                pos_mapping={
+                       SemanticRole.AGENT: "noun",
+                       SemanticRole.PATIENT: "noun"
+                },
+                weight=0.1
+            ),
             "communication": SemanticFrame(
                 frame_name="communication",
                 core_roles=[SemanticRole.AGENT, SemanticRole.THEME],
                 optional_roles=[SemanticRole.EXPERIENCER, SemanticRole.TIME],
                 pos_mapping={
-                    SemanticRole.AGENT: "noun",
-                    SemanticRole.THEME: "noun",
-                    SemanticRole.EXPERIENCER: "noun",
-                    SemanticRole.TIME: "temporal"
-                }
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.EXPERIENCER: "noun",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.15
             ),
-
             "motion": SemanticFrame(
                 frame_name="motion",
                 core_roles=[SemanticRole.THEME],
                 optional_roles=[SemanticRole.SOURCE, SemanticRole.GOAL, SemanticRole.TIME],
                 pos_mapping={
-                    SemanticRole.THEME: "noun",
-                    SemanticRole.SOURCE: "location",
-                    SemanticRole.GOAL: "location",
-                    SemanticRole.TIME: "temporal"
-                }
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.SOURCE: "location",
+                        SemanticRole.GOAL: "location",
+                        SemanticRole.TIME: "temporal"
+                },
+                 weight=0.15
+            ),
+            "instrumental_action": SemanticFrame(
+                frame_name="instrumental_action",
+                core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT, SemanticRole.INSTRUMENT],
+                optional_roles=[SemanticRole.LOCATION, SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.PATIENT: "noun",
+                        SemanticRole.INSTRUMENT: "instrument",  # Use instrument category if available
+                        SemanticRole.LOCATION: "location",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.1
+            ),
+            "temporal_action": SemanticFrame(
+                frame_name="temporal_action",
+                core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT, SemanticRole.TIME],
+                optional_roles=[SemanticRole.LOCATION],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.PATIENT: "noun",
+                        SemanticRole.TIME: "temporal",
+                        SemanticRole.LOCATION: "location"
+                },
+                weight=0.1
+            ),
+            "complex_motion": SemanticFrame(
+                frame_name="complex_motion",
+                core_roles=[SemanticRole.THEME, SemanticRole.SOURCE, SemanticRole.GOAL],
+                optional_roles=[SemanticRole.AGENT, SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.SOURCE: "location",
+                        SemanticRole.GOAL: "location",
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.1
+            ),
+            "complex_communication": SemanticFrame(
+                frame_name="complex_communication",
+                core_roles=[SemanticRole.AGENT, SemanticRole.THEME, SemanticRole.EXPERIENCER],
+                optional_roles=[SemanticRole.TIME, SemanticRole.LOCATION],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.EXPERIENCER: "noun",
+                        SemanticRole.TIME: "temporal",
+                        SemanticRole.LOCATION: "location"
+                },
+                weight=0.1
+            ),
+            "coordination": SemanticFrame(
+                frame_name="coordination",
+                core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT],
+                optional_roles=[SemanticRole.THEME, SemanticRole.LOCATION, SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.PATIENT: "noun",
+                        SemanticRole.THEME: "noun",  # For second coordinated object
+                        SemanticRole.LOCATION: "location",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.1
+            ),
+            "change_of_state": SemanticFrame(
+                frame_name="change_of_state",
+                core_roles=[SemanticRole.THEME],
+                optional_roles=[SemanticRole.AGENT, SemanticRole.INSTRUMENT, SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.INSTRUMENT: "noun",
+                        SemanticRole.TIME: "temporal"
+                },
+                    weight=0.1
+            ),
+            "transfer": SemanticFrame(
+                frame_name="transfer",
+                core_roles=[SemanticRole.AGENT, SemanticRole.THEME, SemanticRole.GOAL],
+                optional_roles=[SemanticRole.SOURCE, SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.GOAL: "noun",
+                        SemanticRole.SOURCE: "noun",
+                        SemanticRole.TIME: "temporal"
+                },
+                    weight=0.1
+            ),
+            "causation": SemanticFrame(
+                frame_name="causation",
+                core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT, SemanticRole.THEME],
+                optional_roles=[SemanticRole.INSTRUMENT, SemanticRole.LOCATION],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.PATIENT: "noun",
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.INSTRUMENT: "noun",
+                        SemanticRole.LOCATION: "location"
+                },
+                weight=0.1
+            ),
+            "multi_participant": SemanticFrame(
+                frame_name="multi_participant",
+                core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT, SemanticRole.EXPERIENCER],
+                optional_roles=[SemanticRole.THEME, SemanticRole.LOCATION, SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.PATIENT: "noun",
+                        SemanticRole.EXPERIENCER: "noun",
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.LOCATION: "location",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.1
+            ),
+            "experiential": SemanticFrame(
+                frame_name="experiential",
+                core_roles=[SemanticRole.EXPERIENCER, SemanticRole.THEME],
+                optional_roles=[SemanticRole.TIME, SemanticRole.LOCATION],
+                pos_mapping={
+                        SemanticRole.EXPERIENCER: "noun",
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.TIME: "temporal",
+                        SemanticRole.LOCATION: "location"
+                },
+                    weight=0.1
+            ),
+            "possession": SemanticFrame(
+                frame_name="possession",
+                core_roles=[SemanticRole.AGENT, SemanticRole.THEME],
+                optional_roles=[SemanticRole.SOURCE, SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.AGENT: "noun",
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.SOURCE: "noun",
+                        SemanticRole.TIME: "temporal"
+                },
+                    weight=0.1
+            ),
+            "location_static": SemanticFrame(
+                frame_name="location_static",
+                core_roles=[SemanticRole.THEME, SemanticRole.LOCATION],
+                optional_roles=[SemanticRole.TIME],
+                pos_mapping={
+                        SemanticRole.THEME: "noun",
+                        SemanticRole.LOCATION: "location",
+                        SemanticRole.TIME: "temporal"
+                },
+                weight=0.1
             )
         }
