@@ -21,6 +21,8 @@ class SemanticRole(Enum):
 class SemanticFrame:
     """
     Represents a semantic frame with standardized argument structure.
+    We define it as a dataclass to encapsulate the frame name, core roles, optional roles, and part-of-speech mappings -
+    similar to out Vocabulary class.
     """
     frame_name: str
     core_roles: List[SemanticRole]
