@@ -20,8 +20,10 @@
 git clone https://github.com/yourusername/absynth.git
 cd absynth
 
-# Install dependencies
-pip install -r requirements.txt
+# Create and activate the conda environment
+conda env create -f environment.yml
+conda activate ABSYN_dataset
+
 
 # Or install in development mode
 pip install -e .
