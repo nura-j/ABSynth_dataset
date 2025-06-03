@@ -7,8 +7,8 @@ from dataclasses import dataclass
 class LinguisticAnnotation:
     """Container for comprehensive linguistic annotations."""
     pos_tags: List[str]
-    dependency_parse: List[Dict[str, Any]]
-    constituency_parse: str
+    # dependency_parse: List[Dict[str, Any]]
+    # constituency_parse: str
     semantic_roles: Dict[str, str] # todo via https://stanfordnlp.github.io/stanza/available_models.html
     formal_semantics: str
 
