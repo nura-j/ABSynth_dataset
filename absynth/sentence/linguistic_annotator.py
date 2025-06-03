@@ -2,6 +2,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
 
+
 @dataclass
 class LinguisticAnnotation:
     """Container for comprehensive linguistic annotations."""
