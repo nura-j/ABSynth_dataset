@@ -25,7 +25,7 @@ conda env create -f environment.yml
 conda activate ABSYN_dataset
 
 
-# Or install in development mode
+# Install in development mode
 pip install -e .
 ```
 
