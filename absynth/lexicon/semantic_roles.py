@@ -37,7 +37,6 @@ class SemanticFrame:
             self.pos_mapping = {}
 
 
-
 class SemanticRoles:
     """
     Manages semantic frames and role assignments for corpus generation.
