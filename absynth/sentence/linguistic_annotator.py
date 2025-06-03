@@ -8,7 +8,7 @@ class LinguisticAnnotation:
     pos_tags: List[str]
     dependency_parse: List[Dict[str, Any]]
     constituency_parse: str
-    semantic_roles: Dict[str, str]
+    semantic_roles: Dict[str, str] # todo via https://stanfordnlp.github.io/stanza/available_models.html
     formal_semantics: str
 
     def to_dict(self) -> Dict[str, Any]:
@@ -17,8 +17,8 @@ class LinguisticAnnotation:
         """
         return {
             "pos_tags": self.pos_tags,
-            "dependency_parse": self.dependency_parse,
-            "constituency_parse": self.constituency_parse,
+            # "dependency_parse": self.dependency_parse,
+            # "constituency_parse": self.constituency_parse,
             "semantic_roles": self.semantic_roles,
             "formal_semantics": self.formal_semantics
         }
