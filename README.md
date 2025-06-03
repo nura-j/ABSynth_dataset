@@ -216,27 +216,22 @@ sentence_data = generator.generate_sentence(
 
 print(sentence_data)
 # Output:
-# {
-#   "sentence": "The scientist studies the phenomenon carefully",
-#   "semantic_roles": {
-#     "arg0": {"word": "scientist", "role": "Agent", "position": 1},
-#     "arg1": {"word": "phenomenon", "role": "Patient", "position": 3}
-#   },
-#   "semantics": "∃e.transitive_action(e) ∧ Agent(e, scientist) ∧ Patient(e, phenomenon)",
-#   "linguistic_annotations": {
-#     "pos_tags": ["DT", "NN", "VBZ", "DT", "NN", "RB"],
-#     "dependency_parse": [...],
-#     "constituency_parse": "(S (NP (DT The) (NN scientist)) (VP (VBZ studies) (NP (DT the) (NN phenomenon)) (ADVP (RB carefully))))",
-#     "formal_semantics": "λx0 x1.∃e.transitive_action(e) ∧ Agent(x0) ∧ Patient(x1)"
-#   },
-#   "metadata": {
-#     "complexity": "medium",
-#     "frame": "transitive_action",
-#     "length": 6,
-#     "entropy_profile": [2.1, 1.8, 1.5, 2.3, 1.9, 2.7],
-#     "avg_entropy": 2.05
-#   }
-# }
+# {'sentence': 'noun139 transitive_verb8s noun40 preposition4 location2', 
+#  'semantic_roles': {'arg0': {'word': 'noun139', 'role': 'Agent', 'position': 0}, 
+#                     'arg1': {'word': 'noun40', 'role': 'Patient', 'position': 2}, 
+#                     'arg2': {'word': 'location2', 'role': 'Location', 'position': 4}}, 
+#  'semantics': '∃e.transitive_action(e) ∧ Agent(e, noun139) ∧ Patient(e, noun40) ∧ Location(e, location2)', 
+#  'linguistic_annotations': {'pos_tags': ['NN', 'VB', 'NN', 'IN', 'NN'], 
+#                             'dependency_parse': [{'id': 1, 'word': 'noun139', 'pos': 'NN', 'head': 2, 'relation': 'nsubj'}, {'id': 2, 'word': 'transitive_verb8s', 'pos': 'VB', 'head': 0, 'relation': 'ROOT'}, {'id': 3, 'word': 'noun40', 'pos': 'NN', 'head': 2, 'relation': 'dobj'}, {'id': 4, 'word': 'preposition4', 'pos': 'IN', 'head': 2, 'relation': 'prep'}, {'id': 5, 'word': 'location2', 'pos': 'NN', 'head': 2, 'relation': 'dobj'}], 
+#                             'constituency_parse': '(S (NP (NN noun139)) (VP (VB transitive_verb8s)) (NP (NN noun40)) (IN preposition4) (NP (NN location2)))', 
+#                             'semantic_roles': {'noun139': 'Agent', 'noun40': 'Patient', 'location2': 'Location'}, 
+#                             'formal_semantics': 'λx0 x2 x4.∃e.transitive_action(e) ∧ Agent(x0) ∧ Patient(x2) ∧ Location(x4)'}, 
+#  'metadata': {'complexity': 'medium', 
+#               'frame': 'transitive_action', 'template': {'frame': 'transitive_action', 'args': ['arg0', 'verb', 'arg1', 'prep', 'arg2'], 'roles': {'arg0': <SemanticRole.AGENT: 'Agent'>, 'arg1': <SemanticRole.PATIENT: 'Patient'>, 'arg2': <SemanticRole.LOCATION: 'Location'>}, 'weight': 0.2}, 
+# 'length': 5, 'entropy_profile': [2.2516291673878226, 2.2516291673878226, 2.2516291673878226, 2.2516291673878226, 2.2516291673878226], 
+# 'avg_entropy': 2.2516291673878226}}
+
+
 ```
 
 ## Corpus Generation
