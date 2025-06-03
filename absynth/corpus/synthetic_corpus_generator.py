@@ -76,12 +76,8 @@ class SyntheticCorpusGenerator:
             complexity_distribution = {"simple": 0.55, "medium": 0.35, "complex": 0.1}
 
         if semantic_frame_distribution is None:
-            semantic_frame_distribution = {
-                "transitive_action": 0.4,
-                "intransitive_action": 0.25,
-                "communication": 0.2,
-                "motion": 0.15
-            }
+            # get the deftault semantic frame keys from the FrameManager
+            semantic_frame_distribution = self.frames.get_default_semantic_frames_distribution()
 
         # Set custom template weights if provided
         if frames_weights:
@@ -111,7 +107,6 @@ class SyntheticCorpusGenerator:
                     sentence_data["corpus_metadata"] = {
                         "target_frame": frame_name,
                         "sentence_id": len(self.corpus),
-                        "generation_timestamp": self._get_timestamp()
                     }
 
                     self.corpus.append(sentence_data)
@@ -123,7 +118,7 @@ class SyntheticCorpusGenerator:
         self._adjust_corpus_distribution(
             complexity_distribution,
             semantic_frame_distribution,
-            num_sentences
+            target_size=num_sentences
         )
 
         # Store generation metadata
@@ -184,7 +179,6 @@ class SyntheticCorpusGenerator:
                 sentence_data = self.sentence_generator.generate_sentence(complexity=complexity)
                 sentence_data["corpus_metadata"] = {
                     "sentence_id": len(self.corpus),
-                    "generation_timestamp": self._get_timestamp(),
                     "adjustment_generation": True
                 }
                 self.corpus.append(sentence_data)
@@ -206,10 +200,6 @@ class SyntheticCorpusGenerator:
             "semantic_frames": {k: v / total for k, v in frame_counts.items()}
         }
 
-    def _get_timestamp(self) -> str:
-        """Get current timestamp for metadata."""
-        import datetime
-        return datetime.datetime.now().isoformat()
 
     def save_corpus(self,
                     output_file: str,
@@ -264,14 +254,14 @@ class SyntheticCorpusGenerator:
 
         print(f"Corpus saved to '{output_file}' in {format_type} format")
 
-    def _get_word_semantic_role(self, word: str, semantic_roles: Dict) -> Optional[str]:
-        """Get semantic role for a specific word."""
-        for arg, role_info in semantic_roles.items():
-            if role_info.get("word") == word:
-                return role_info.get("role")
-        return None
+    # def _get_word_semantic_role(self, word: str, semantic_roles: Dict) -> Optional[str]:
+    #     """Get semantic role for a specific word."""
+    #     for arg, role_info in semantic_roles.items():
+    #         if role_info.get("word") == word:
+    #             return role_info.get("role")
+    #     return None
 
-    def evaluate_corpus(self) -> Dict[str, Any]:
+    def evaluate_corpus(self, calculate_suitability: Optional[bool]=None) -> Dict[str, Any]:
         """
         Comprehensive corpus evaluation with semantic frame analysis.
 
@@ -283,99 +273,30 @@ class SyntheticCorpusGenerator:
 
         # Standard corpus evaluation
         stats = self.evaluator.analyze_corpus(self.corpus)
-        suitability = self.evaluator.evaluate_next_token_prediction_suitability()
+        if calculate_suitability:
+            suitability = self.evaluator.evaluate_next_token_prediction_suitability()
 
-        # Semantic frame analysis
-        frame_analysis = self._analyze_semantic_frames()
 
-        print(f"Corpus evaluation complete:")
-        print(f"  Suitability score: {suitability['suitability_score']:.2f} ({suitability['suitability_category']})")
-        print(f"  Semantic frame diversity: {frame_analysis['frame_diversity']:.3f}")
-        print(f"  Role coverage: {frame_analysis['role_coverage']:.1%}")
+            print(f"Corpus evaluation complete:")
+            print(f"  Suitability score: {suitability['suitability_score']:.2f} ({suitability['suitability_category']})")
 
-        if suitability["recommendations"]:
-            print("\nRecommendations:")
-            for i, rec in enumerate(suitability["recommendations"], 1):
-                print(f"  {i}. {rec}")
+            if suitability["recommendations"]:
+                print("\nRecommendations:")
+                for i, rec in enumerate(suitability["recommendations"], 1):
+                    print(f"  {i}. {rec}")
 
-        return {
-            "statistics": stats,
-            "suitability": suitability,
-            "semantic_analysis": frame_analysis,
-            "metadata": self.metadata
-        }
+            return {
+                "statistics": stats,
+                "suitability": suitability,
+                "metadata": self.metadata
+            }
+        else:
 
-    def _analyze_semantic_frames(self) -> Dict[str, Any]:
-        """Analyze semantic frame distribution and coverage."""
-        frame_counts = Counter()
-        role_counts = Counter()
-        total_sentences = len(self.corpus)
+            return {
+                "statistics": stats,
+                "metadata": self.metadata
+            }
 
-        for item in self.corpus:
-            # Count frames
-            frame = item.get("metadata", {}).get("frame", "unknown")
-            frame_counts[frame] += 1
-
-            # Count roles
-            for role_info in item.get("semantic_roles", {}).values():
-                role_counts[role_info.get("role", "unknown")] += 1
-
-        # Calculate diversity metrics
-        frame_diversity = len(frame_counts) / max(1, total_sentences)  # Unique frames per sentence
-        role_coverage = len(role_counts) / 9  # Coverage of standard semantic roles (9 total)
-
-        return {
-            "frame_distribution": {k: v / total_sentences for k, v in frame_counts.items()},
-            "role_distribution": dict(role_counts),
-            "frame_diversity": frame_diversity,
-            "role_coverage": role_coverage,
-            "unique_frames": len(frame_counts),
-            "unique_roles": len(role_counts)
-        }
-
-    def generate_subsets(self, subset_configs: Dict[str, Dict]) -> Dict[str, List[Dict]]:
-        """
-        Generate specialized subsets of the corpus for different tasks.
-
-        Args:
-            subset_configs: Configuration for each subset
-                Example: {
-                    "simple_transitive": {"complexity": ["simple"], "frames": ["transitive_action"]},
-                    "complex_communication": {"complexity": ["complex"], "frames": ["communication"]}
-                }
-
-        Returns:
-            Dictionary mapping subset names to sentence lists
-        """
-        if not self.corpus:
-            raise ValueError("No corpus generated yet. Call generate_corpus() first.")
-
-        subsets = {}
-
-        for subset_name, config in subset_configs.items():
-            target_complexities = config.get("complexity", [])
-            target_frames = config.get("frames", [])
-            max_size = config.get("max_size", None)
-
-            filtered_sentences = []
-
-            for item in self.corpus:
-                metadata = item.get("metadata", {})
-                complexity = metadata.get("complexity", "")
-                frame = metadata.get("frame", "")
-
-                # Check if sentence matches criteria
-                complexity_match = not target_complexities or complexity in target_complexities
-                frame_match = not target_frames or frame in target_frames
-
-                if complexity_match and frame_match:
-                    filtered_sentences.append(item)
-
-                    if max_size and len(filtered_sentences) >= max_size:
-                        break
-
-            subsets[subset_name] = filtered_sentences
-            print(f"Generated subset '{subset_name}': {len(filtered_sentences)} sentences")
 
     def _make_json_serializable(self, corpus: List[Dict]) -> List[Dict]:
         """Convert corpus to JSON-serializable format."""

@@ -260,3 +260,10 @@ class SemanticRoles:
                 weight=0.1
             )
         }
+
+
+    def get_standard_roles_count(self) -> int:
+        """
+        Returns the count of standard semantic roles.
+        """
+        return len(SemanticRole)

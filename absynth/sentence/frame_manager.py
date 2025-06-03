@@ -17,7 +17,7 @@ class FrameManager:
         # Create template dictionary with weights
         if frames is None:
             # Use default templates with weights
-            self.templates = self._create_weighted_templates()
+            self.frames = self._create_weighted_templates()
         # elif isinstance(frames, dict):
         #     # check if each frame has a weight and a complexity level
         #     print('frames is a dict', frames)
@@ -30,22 +30,21 @@ class FrameManager:
         else:
             # User provided list of semantic frames - convert to weighted templates
             # print("Converting provided frames to templates...")
-            self.templates = self._convert_frames_to_templates(frames)
+            self.frames = self._convert_frames_to_templates(frames)
 
-
-        self.template_usage = {}
+        self.template_usage = {} # Track usage of each template
         self.complexity_distribution = {"simple": 0, "medium": 0, "complex": 0}
 
         # Initialize usage counters
-        for complexity, templates_dict in self.templates.items():
+        for complexity, templates_dict in self.frames.items():
             for template_name in templates_dict:
                 self.template_usage[template_name] = 0
 
         # print("Initialized FrameManager with templates:")
         # print(self.templates)
 
-
-    def _derive_args_from_frame(self, frame: SemanticFrame) -> List[str]:
+    @staticmethod
+    def _derive_args_from_frame(frame: SemanticFrame) -> List[str]:
         """Derive template args structure from semantic frame."""
         args = []
         for i, role in enumerate(frame.core_roles):
@@ -55,8 +54,8 @@ class FrameManager:
                 args.append("verb" if i == 0 else "prep")
         return args
 
-
-    def _derive_roles_from_frame(self, frame: SemanticFrame) -> Dict[str, SemanticRole]:
+    @staticmethod
+    def _derive_roles_from_frame(frame: SemanticFrame) -> Dict[str, SemanticRole]:
         """Map argument positions to semantic roles from frame."""
         role_mapping = {}
         for i, role in enumerate(frame.core_roles):
@@ -94,7 +93,7 @@ class FrameManager:
                 "weight": weight
             }
 
-            if weight_method == 'distribution' and flag:
+            if weight_method == 'distribution' or flag:
                 for complexity in templates:
                     templates_weights[complexity] = 1 / len(templates[complexity]) if templates[complexity] else 0
                 for complexity in templates:
@@ -315,7 +314,7 @@ class FrameManager:
         complexity_level = random.choices(complexity_levels, weights=complexity_weight_values)[0]
 
         # Select template from chosen complexity
-        template_dict = self.templates.get(complexity_level, self.templates["simple"])
+        template_dict = self.frames.get(complexity_level, self.frames["simple"])
         template_names = list(template_dict.keys())
         # print(f"Selected complexity level: {complexity_level}, available templates: {template_names}")
         weights = [template_dict[name]["weight"] for name in template_names]
@@ -323,7 +322,7 @@ class FrameManager:
         if not template_names or not weights:
             # Fallback
             template_name = "basic_transitive"
-            template = self.templates["simple"]["basic_transitive"]
+            template = self.frames["simple"]["basic_transitive"]
             complexity_level = "simple"
         else:
             template_name = random.choices(template_names, weights=weights)[0]
@@ -353,8 +352,21 @@ class FrameManager:
 
     def set_template_weights(self, weights: Dict[str, float]) -> None:
         """Set custom weights for templates."""
-        for complexity in self.templates:
-            for template_name in self.templates[complexity]:
+        for complexity in self.frames:
+            for template_name in self.frames[complexity]:
                 if template_name in weights:
-                    self.templates[complexity][template_name]['weight'] = weights[template_name]
+                    self.frames[complexity][template_name]['weight'] = weights[template_name]
+
+    def get_default_semantic_frames_distribution(self) -> Dict[str, float]:
+        '''Get default distribution of template complexities.
+        Returns:
+            Dict[str, float]: Default distribution of template complexities.
+        '''
+        semantic_frames_distribution = {}
+        default_frames = self._create_weighted_templates()
+        for complexity in default_frames:
+            for template_name in default_frames[complexity]:
+                semantic_frames_distribution[template_name] = default_frames[complexity][template_name]['weight']
+
+        return semantic_frames_distribution
 

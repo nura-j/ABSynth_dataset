@@ -9,7 +9,6 @@ from .frame_manager import FrameManager
 from .linguistic_annotator import LinguisticAnnotator
 
 
-
 class SentenceGenerator:
     """
     Generates sentences with semantic frame structure and rich linguistic annotations.
@@ -227,52 +226,83 @@ class SentenceGenerator:
         return f"∃e.{frame_name}(e)"
 
     def _calculate_entropy_profile(self, words: List[str]) -> List[float]:
-        """Calculate entropy profile for next token prediction."""
+        """
+        Calculate entropy profile for next-token prediction based on bigram statistics.
+         Inspired by https://stackoverflow.com/questions/990477/how-to-calculate-the-entropy-of-a-file and https://machinelearningmastery.com/what-is-information-entropy/
+        """
         entropy_profile = []
+        vocab = set(w for bg in self.bigram_counts for w in bg)
+
+        if not vocab:
+            vocab = set(words)  # fallback vocab from current sentence
+        vocab_size = len(vocab)
 
         for i in range(len(words) - 1):
             current_word = words[i]
-            following_counts = Counter()
-            total_count = 0
+            following_counts = Counter({w: 1 for w in vocab})  # we start with 1 count for each word to avoid zero probabilities
+            total_count = vocab_size
 
-            for bg, count in self.bigram_counts.items():
-                if bg[0] == current_word:
-                    following_counts[bg[1]] += count
+            for (w1, w2), count in self.bigram_counts.items():
+                if w1 == current_word:
+                    following_counts[w2] += count
                     total_count += count
 
-            if total_count > 0:
-                probs = [count / total_count for count in following_counts.values()]
-                entropy = -sum(p * math.log2(p) for p in probs if p > 0)
+            probs = [count / total_count for count in following_counts.values()]
+            entropy = -sum(p * math.log2(p) for p in probs if p > 0)
+            entropy_profile.append(entropy)
 
-                # Adjust toward medium range
-                if entropy < 1.0:
-                    entropy = 1.0 + (entropy * 0.5)
-                elif entropy > 3.0:
-                    entropy = 3.0 - ((entropy - 3.0) * 0.5)
+        # Fallback: use mean of previous entropies or default to log2(V) if none
+        if entropy_profile:
+            final_entropy = sum(entropy_profile) / len(entropy_profile)
+        else:
+            final_entropy = math.log2(vocab_size) if vocab_size > 0 else 1.0
 
-                entropy_profile.append(entropy)
-            else:
-                entropy_profile.append(2.0)  # Medium predictability
+        entropy_profile.append(final_entropy)  # For sentence-end token
 
-        entropy_profile.append(2.8)  # End of sentence
         return entropy_profile
 
-    def get_predictability_distribution(self, entropy_profiles: List[List[float]]) -> Dict[str, float]:
-        """Calculate predictability distribution across corpus."""
-        entropy_values = []
-        for profile in entropy_profiles:
-            entropy_values.extend(profile)
 
+    def get_predictability_distribution(
+            self,
+            entropy_profiles: List[List[float]],
+            thresholds: Optional[Tuple[float, float]] = None
+    ) -> Dict[str, float]:
+        """
+        Calculate predictability distribution across corpus.
+
+        Args:
+            entropy_profiles: List of entropy profiles for sentences
+            thresholds: Tuple of (high_threshold, low_threshold) for predictability bins.
+                        Default is adaptive based on quantiles.
+
+        Returns:
+            Dictionary with proportions of high, medium, and low predictability tokens.
+        """
+        entropy_values = [e for profile in entropy_profiles for e in profile]
         if not entropy_values:
-            return {"high_predictability": 0, "medium_predictability": 0, "low_predictability": 0}
+            return {
+                "high_predictability": 0.0,
+                "medium_predictability": 0.0,
+                "low_predictability": 0.0
+            }
 
         total = len(entropy_values)
-        high_pred = sum(1 for e in entropy_values if e < 1.5) / total
-        medium_pred = sum(1 for e in entropy_values if 1.5 <= e < 3.0) / total
-        low_pred = sum(1 for e in entropy_values if e >= 3.0) / total
+
+        if thresholds:
+            high_thresh, low_thresh = thresholds
+        else:
+            # Adaptive thresholds based on quantiles
+            sorted_entropy = sorted(entropy_values)
+            high_thresh = sorted_entropy[int(0.33 * total)]
+            low_thresh = sorted_entropy[int(0.66 * total)]
+
+        high_pred = sum(1 for e in entropy_values if e < high_thresh) / total
+        medium_pred = sum(1 for e in entropy_values if high_thresh <= e < low_thresh) / total
+        low_pred = sum(1 for e in entropy_values if e >= low_thresh) / total
 
         return {
             "high_predictability": high_pred,
             "medium_predictability": medium_pred,
             "low_predictability": low_pred
         }
+

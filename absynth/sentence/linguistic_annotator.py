@@ -12,7 +12,9 @@ class LinguisticAnnotation:
     formal_semantics: str
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
+        """Convert to dictionary for JSON serialization.
+        Used for saving annotations in a structured format.
+        """
         return {
             "pos_tags": self.pos_tags,
             "dependency_parse": self.dependency_parse,
@@ -32,21 +34,26 @@ class LinguisticAnnotator:
         self.pos_tag_mapping = self._create_pos_mapping()
 
     def _create_pos_mapping(self) -> Dict[str, str]:
-        """Create mapping from word categories to POS tags."""
+        """Create mapping from word categories to POS tags.
+        We follow the Penn Treebank POS tag set for consistency: https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+        """
+
         return {
             "noun": "NN",
-            "transitive_verb": "VBZ",
-            "intransitive_verb": "VBZ",
-            "communication_verb": "VBZ",
-            "motion_verb": "VBZ",
-            "change_verb": "VBZ",
+            "transitive_verb": "VB",
+            "intransitive_verb": "VB",
+            "communication_verb": "VB",
+            "motion_verb": "VB",
+            "change_verb": "VB",
             "adjective": "JJ",
             "adverb": "RB",
             "location": "NN",
             "temporal": "NN",
             "preposition": "IN",
             "conjunction": "CC",
-            "determiner": "DT"
+            "determiner": "DT",
+            "cardinal_number": "CD",
+            "numeral": "CD",
         }
 
     def annotate_sentence(self, sentence: str, words: List[str],
@@ -98,6 +105,8 @@ class LinguisticAnnotator:
                 if base_category in self.pos_tag_mapping:
                     if category.endswith('ed'):
                         pos_tags.append("VBD")  # Past tense
+                    elif category.endswith('ing'):
+                        pos_tags.append("VBG")
                     else:
                         pos_tags.append(self.pos_tag_mapping.get(base_category, "NN"))
                 else:
@@ -230,6 +239,7 @@ class LinguisticAnnotator:
                 i += 1
 
         return f"(S {' '.join(constituents)})"
+
 
     def _generate_formal_semantics(self, role_assignments: Dict, frame_name: str) -> str:
         """Generate formal semantic representation using lambda calculus."""

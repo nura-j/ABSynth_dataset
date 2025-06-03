@@ -42,8 +42,8 @@ class LexiconGenerator:
             for frame in additional_semantic_frames:
                 self.add_semantic_frame(frame)
         # Usage tracking
-        self.used_words = {cat: set() for cat in self.word_probabilities.keys()}
-        self.word_counts = {cat: Counter() for cat in self.word_probabilities.keys()}
+        self.used_words = {cat: set() for cat in self.word_probabilities.keys()} #todo: still need to track used words when sampling
+        self.word_counts = {cat: Counter() for cat in self.word_probabilities.keys()} #todo: still need to track word counts when sampling
 
         # Initialize entropy tracking
         self.entropy_counts = {
@@ -139,7 +139,21 @@ class LexiconGenerator:
 
 
     def _establish_collocations(self) -> Dict[str, Dict[str, float]]:
-        """Establish collocational preferences between words for realistic co-occurrence."""
+        """Establish collocational preferences between words for realistic co-occurrence.
+        To ensure a balanced distribution of predictability, we create collocations
+        with varying strengths based on semantic clusters and word types.
+        This method creates collocations between nouns, adjectives, and verbs
+        with a focus on realistic predictability distributions.
+        The collocations are designed to reflect natural language patterns,
+        where some word pairs are strongly associated, while others are weakly associated.
+        The collocations are created with the following principles:
+        1. Strong associations between nouns and adjectives within the same semantic cluster.
+        2. Medium-strength associations between verbs and nouns, with some variation.
+        3. Weaker associations between words in different clusters to reflect natural language diversity.
+        4. Adverbs are associated with verbs, but with medium strength to avoid predictability.
+        5. The collocations are designed to reflect a range of predictability, from strong to very weak,
+        ensuring a realistic distribution of word associations.
+        """
         collocations = defaultdict(dict)
         # Define collocation strength constants
         STRONG_BASE, STRONG_VARIANCE = 0.4, 0.3  # Range 0.4-0.7
@@ -302,3 +316,5 @@ class LexiconGenerator:
                 for name, frame in self.semantic_frames.items()
             }
         }
+
+    # todo: load lexicon from file
