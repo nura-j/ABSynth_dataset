@@ -42,6 +42,7 @@ class SemanticRoles:
     Manages semantic frames and role assignments for corpus generation.
     """
 
+
     @staticmethod
     def get_standard_frames() -> Dict[str, SemanticFrame]:
         """
