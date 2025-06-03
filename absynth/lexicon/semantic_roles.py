@@ -63,17 +63,17 @@ class SemanticRoles:
                 weight=0.2
             ),
 
-            "intransitive_action": SemanticFrame(
-                frame_name="intransitive_action",
-                core_roles=[SemanticRole.AGENT],
-                optional_roles=[SemanticRole.LOCATION, SemanticRole.TIME],
-                pos_mapping={
-                        SemanticRole.AGENT: "noun",
-                        SemanticRole.LOCATION: "location",
-                        SemanticRole.TIME: "temporal"
-                },
-                weight=0.20
-            ),
+            # "intransitive_action": SemanticFrame(
+            #     frame_name="intransitive_action",
+            #     core_roles=[SemanticRole.AGENT, ],
+            #     optional_roles=[SemanticRole.LOCATION, SemanticRole.TIME],
+            #     pos_mapping={
+            #             SemanticRole.AGENT: "noun",
+            #             SemanticRole.LOCATION: "location",
+            #             SemanticRole.TIME: "temporal"
+            #     },
+            #     weight=0.20
+            # ),
             "basic_transitive": SemanticFrame(
                 frame_name="basic_transitive",
                 core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT],
@@ -98,8 +98,8 @@ class SemanticRoles:
             ),
             "motion": SemanticFrame(
                 frame_name="motion",
-                core_roles=[SemanticRole.THEME],
-                optional_roles=[SemanticRole.SOURCE, SemanticRole.GOAL, SemanticRole.TIME],
+                core_roles=[SemanticRole.THEME,  SemanticRole.GOAL],
+                optional_roles=[SemanticRole.SOURCE, SemanticRole.TIME],
                 pos_mapping={
                         SemanticRole.THEME: "noun",
                         SemanticRole.SOURCE: "location",
@@ -172,18 +172,6 @@ class SemanticRoles:
                 },
                 weight=0.1
             ),
-            "change_of_state": SemanticFrame(
-                frame_name="change_of_state",
-                core_roles=[SemanticRole.THEME],
-                optional_roles=[SemanticRole.AGENT, SemanticRole.INSTRUMENT, SemanticRole.TIME],
-                pos_mapping={
-                        SemanticRole.THEME: "noun",
-                        SemanticRole.AGENT: "noun",
-                        SemanticRole.INSTRUMENT: "noun",
-                        SemanticRole.TIME: "temporal"
-                },
-                    weight=0.1
-            ),
             "transfer": SemanticFrame(
                 frame_name="transfer",
                 core_roles=[SemanticRole.AGENT, SemanticRole.THEME, SemanticRole.GOAL],
@@ -196,19 +184,6 @@ class SemanticRoles:
                         SemanticRole.TIME: "temporal"
                 },
                     weight=0.1
-            ),
-            "causation": SemanticFrame(
-                frame_name="causation",
-                core_roles=[SemanticRole.AGENT, SemanticRole.PATIENT, SemanticRole.THEME],
-                optional_roles=[SemanticRole.INSTRUMENT, SemanticRole.LOCATION],
-                pos_mapping={
-                        SemanticRole.AGENT: "noun",
-                        SemanticRole.PATIENT: "noun",
-                        SemanticRole.THEME: "noun",
-                        SemanticRole.INSTRUMENT: "noun",
-                        SemanticRole.LOCATION: "location"
-                },
-                weight=0.1
             ),
             "multi_participant": SemanticFrame(
                 frame_name="multi_participant",
