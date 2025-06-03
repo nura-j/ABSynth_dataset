@@ -222,8 +222,6 @@ print(sentence_data)
 #                     'arg2': {'word': 'location2', 'role': 'Location', 'position': 4}}, 
 #  'semantics': '∃e.transitive_action(e) ∧ Agent(e, noun139) ∧ Patient(e, noun40) ∧ Location(e, location2)', 
 #  'linguistic_annotations': {'pos_tags': ['NN', 'VB', 'NN', 'IN', 'NN'], 
-#                             'dependency_parse': [{'id': 1, 'word': 'noun139', 'pos': 'NN', 'head': 2, 'relation': 'nsubj'}, {'id': 2, 'word': 'transitive_verb8s', 'pos': 'VB', 'head': 0, 'relation': 'ROOT'}, {'id': 3, 'word': 'noun40', 'pos': 'NN', 'head': 2, 'relation': 'dobj'}, {'id': 4, 'word': 'preposition4', 'pos': 'IN', 'head': 2, 'relation': 'prep'}, {'id': 5, 'word': 'location2', 'pos': 'NN', 'head': 2, 'relation': 'dobj'}], 
-#                             'constituency_parse': '(S (NP (NN noun139)) (VP (VB transitive_verb8s)) (NP (NN noun40)) (IN preposition4) (NP (NN location2)))', 
 #                             'semantic_roles': {'noun139': 'Agent', 'noun40': 'Patient', 'location2': 'Location'}, 
 #                             'formal_semantics': 'λx0 x2 x4.∃e.transitive_action(e) ∧ Agent(x0) ∧ Patient(x2) ∧ Location(x4)'}, 
 #  'metadata': {'complexity': 'medium', 

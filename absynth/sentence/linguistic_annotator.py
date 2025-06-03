@@ -73,11 +73,11 @@ class LinguisticAnnotator:
         # Generate POS tags
         pos_tags = self._generate_pos_tags(words)
 
-        # Generate dependency parse
-        dependency_parse = self._generate_dependency_parse(words, pos_tags, role_assignments)
-
-        # Generate constituency parse
-        constituency_parse = self._generate_constituency_parse(words, pos_tags, role_assignments)
+        # # Generate dependency parse
+        # dependency_parse = self._generate_dependency_parse(words, pos_tags, role_assignments)
+        #
+        # # Generate constituency parse
+        # constituency_parse = self._generate_constituency_parse(words, pos_tags, role_assignments)
 
         # Extract semantic roles
         semantic_roles = {info["word"]: info["role"] for info in role_assignments.values()}
@@ -87,8 +87,6 @@ class LinguisticAnnotator:
 
         return LinguisticAnnotation(
             pos_tags=pos_tags,
-            dependency_parse=dependency_parse,
-            constituency_parse=constituency_parse,
             semantic_roles=semantic_roles,
             formal_semantics=formal_semantics
         )
@@ -115,130 +113,6 @@ class LinguisticAnnotator:
                 pos_tags.append(self.pos_tag_mapping.get(category, "NN"))
 
         return pos_tags
-
-    def _generate_dependency_parse(self, words: List[str], pos_tags: List[str],
-                                   role_assignments: Dict) -> List[Dict[str, Any]]:
-        """Generate dependency parse structure."""
-        dependencies = []
-
-        # Find the main verb (head of the sentence)
-        verb_idx = -1
-        for i, pos in enumerate(pos_tags):
-            if pos.startswith('VB'):
-                verb_idx = i
-                break
-
-        if verb_idx == -1:
-            verb_idx = 0  # Fallback
-
-        # Create dependency relations
-        for i, (word, pos) in enumerate(zip(words, pos_tags)):
-            if i == verb_idx:
-                # Main verb is root
-                dep = {
-                    "id": i + 1,
-                    "word": word,
-                    "pos": pos,
-                    "head": 0,
-                    "relation": "ROOT"
-                }
-            elif pos == "NN" and i < verb_idx:
-                # Noun before verb is likely subject
-                dep = {
-                    "id": i + 1,
-                    "word": word,
-                    "pos": pos,
-                    "head": verb_idx + 1,
-                    "relation": "nsubj"
-                }
-            elif pos == "NN" and i > verb_idx:
-                # Noun after verb is likely object
-                dep = {
-                    "id": i + 1,
-                    "word": word,
-                    "pos": pos,
-                    "head": verb_idx + 1,
-                    "relation": "dobj"
-                }
-            elif pos == "JJ":
-                # Adjective modifies nearest noun
-                noun_head = self._find_nearest_noun(i, words, pos_tags)
-                dep = {
-                    "id": i + 1,
-                    "word": word,
-                    "pos": pos,
-                    "head": noun_head,
-                    "relation": "amod"
-                }
-            elif pos == "RB":
-                # Adverb modifies verb
-                dep = {
-                    "id": i + 1,
-                    "word": word,
-                    "pos": pos,
-                    "head": verb_idx + 1,
-                    "relation": "advmod"
-                }
-            elif pos == "IN":
-                # Preposition
-                dep = {
-                    "id": i + 1,
-                    "word": word,
-                    "pos": pos,
-                    "head": verb_idx + 1,
-                    "relation": "prep"
-                }
-            else:
-                # Default attachment to verb
-                dep = {
-                    "id": i + 1,
-                    "word": word,
-                    "pos": pos,
-                    "head": verb_idx + 1,
-                    "relation": "dep"
-                }
-
-            dependencies.append(dep)
-
-        return dependencies
-
-    def _find_nearest_noun(self, adj_idx: int, words: List[str], pos_tags: List[str]) -> int:
-        """Find the nearest noun for adjective attachment."""
-        # Look right first, then left
-        for i in range(adj_idx + 1, len(pos_tags)):
-            if pos_tags[i] == "NN":
-                return i + 1
-        for i in range(adj_idx - 1, -1, -1):
-            if pos_tags[i] == "NN":
-                return i + 1
-        return 1  # Default to first word
-
-    def _generate_constituency_parse(self, words: List[str], pos_tags: List[str],
-                                     role_assignments: Dict) -> str:
-        """Generate constituency parse tree."""
-        # Simple constituency structure based on semantic roles
-        constituents = []
-        i = 0
-
-        while i < len(words):
-            pos = pos_tags[i]
-            word = words[i]
-
-            if pos == "JJ" and i + 1 < len(pos_tags) and pos_tags[i + 1] == "NN":
-                # Adjective + Noun = NP
-                constituents.append(f"(NP (JJ {word}) (NN {words[i + 1]}))")
-                i += 2
-            elif pos == "NN":
-                constituents.append(f"(NP (NN {word}))")
-                i += 1
-            elif pos.startswith("VB"):
-                constituents.append(f"(VP (VB {word}))")
-                i += 1
-            else:
-                constituents.append(f"({pos} {word})")
-                i += 1
-
-        return f"(S {' '.join(constituents)})"
 
 
     def _generate_formal_semantics(self, role_assignments: Dict, frame_name: str) -> str:
