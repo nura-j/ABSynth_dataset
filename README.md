@@ -20,13 +20,12 @@
 git clone https://github.com/nura-j/absynth.git
 cd absynth
 
-# Create and activate the conda environment
+# [Optional] create and activate the conda environment
 conda env create -f environment.yml
 conda activate ABSYN_dataset
 
-
-# Install in development mode
-pip install -e .
+# Install
+pip install .
 ```
 
 ### Basic Usage
