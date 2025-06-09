@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
-from enum import Enum
+from typing import Dict, List
+from enum import StrEnum
 
 
-class SemanticRole(Enum):
+class SemanticRole(StrEnum):
     """Standard semantic roles (thematic roles) for argument structure."""
 
     AGENT = "Agent"  # The doer of the action
@@ -41,8 +41,6 @@ class SemanticRoles:
     """
     Manages semantic frames and role assignments for corpus generation.
     """
-
-
     @staticmethod
     def get_standard_frames() -> Dict[str, SemanticFrame]:
         """
@@ -237,7 +235,8 @@ class SemanticRoles:
         }
 
 
-    def get_standard_roles_count(self) -> int:
+    @staticmethod
+    def get_standard_roles_count() -> int:
         """
         Returns the count of standard semantic roles.
         """
