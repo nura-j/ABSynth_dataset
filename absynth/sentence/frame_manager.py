@@ -102,8 +102,8 @@ class FrameManager:
 
         return templates
 
-    # def _create_frame_templates(self):
-    def _create_weighted_templates(self) -> Dict[str, Dict[str, Dict]]:
+    @staticmethod
+    def create_weighted_templates() -> Dict[str, Dict[str, Dict]]:
         """
         Create semantic frame templates with standardized argument structure.
         Templates now use arg0, arg1, etc. with semantic role mappings.
@@ -363,7 +363,7 @@ class FrameManager:
             Dict[str, float]: Default distribution of template complexities.
         '''
         semantic_frames_distribution = {}
-        default_frames = self._create_weighted_templates()
+        default_frames = self.create_weighted_templates()
         for complexity in default_frames:
             for template_name in default_frames[complexity]:
                 semantic_frames_distribution[template_name] = default_frames[complexity][template_name]['weight']

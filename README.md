@@ -36,7 +36,32 @@ from absynth.corpus import SyntheticCorpusGenerator
 # Create generator with default settings
 generator = SyntheticCorpusGenerator()
 
-# Generate a corpus
+# Generate a corpus with 10K sentences with default distributions
+corpus = generator(10000)
+
+# Checking distributions
+print(corpus.complexity_distribution)  # {'simple': 0.55, 'medium': 0.35, 'complex': 0.1}
+print(corpus.semantic_frame_distribution)  # {'basic_transitive': 0.25, 'basic_intransitive': 0.2, ... }
+
+# Save corpus
+corpus.save("corpus_full.json", indent=2)
+
+# Export in different formats
+corpus.export("corpus_semantic.json", format="semantic_annotations", indent=2) 
+corpus.export("corpus_sentences.json", format="sentences_only", indent=2)
+
+# Evaluate quality
+evaluation = generator.evaluate_corpus(corpus, calculate_suitability=True)
+print(f"Suitability Score: {evaluation['suitability']['suitability_score']:.2f}")
+```
+
+```python
+from absynth.corpus import SyntheticCorpusGenerator
+
+# Create generator with default settings
+generator = SyntheticCorpusGenerator()
+
+# Generate a corpus with custom distributions
 corpus = generator.generate_corpus(
     num_sentences=10000,
     complexity_distribution={"simple": 0.55, "medium": 0.35, "complex": 0.1},
@@ -47,14 +72,13 @@ corpus = generator.generate_corpus(
         "motion": 0.15
     }
 )
+```
 
-# Save in different formats
-generator.save_corpus("corpus_full.json", format_type="full")
-generator.save_corpus("corpus_semantic.json", format_type="semantic_only") 
-generator.save_corpus("corpus_sentences.json", format_type="sentences_only")
-# Evaluate quality
-evaluation = generator.evaluate_corpus()
-print(f"Suitability Score: {evaluation['suitability']['suitability_score']:.2f}")
+```python
+from absynth.corpus import SynthCorpus
+
+# Load saved corpus
+corpus = SynthCorpus.load("corpus_full.json")
 ```
 
 ## 📖 Documentation
@@ -88,6 +112,7 @@ absynth/
 - **FrameManager**: Handles semantic frame templates and role assignments
 - **SentenceGenerator**: Creates annotated sentences with linguistic features
 - **SyntheticCorpusGenerator**: Orchestrates large-scale corpus generation
+- **SynthCorpus**: Provides core corpus data, metadata and functionalities
 - **CorpusEvaluator**: Provides quality assessment and NLP suitability metrics
 
 ## Lexicon System
