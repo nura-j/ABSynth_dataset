@@ -110,7 +110,9 @@ class SyntheticCorpusGenerator:
                  zipfian_alpha: float = 1.05,
                  error_bias: float = 0.0000001,
                  random_seed: Optional[int] = None,
-                 frames: Optional[List[SemanticFrame]] = None
+                 frames: Optional[List[SemanticFrame]] = None,
+                 lexicon: Optional[LexiconGenerator] = None,
+                 sentence_generator: Optional[SentenceGenerator] = None,
                  ):
         """
         Initialize the corpus generator.
@@ -125,15 +127,15 @@ class SyntheticCorpusGenerator:
             frames: Optional list of semantic frames to use in the corpus
         """
         # Initialize components with semantic frame support
-        self.lexicon = LexiconGenerator(vocab_sizes,
-                                        num_clusters=num_clusters,
-                                        additional_semantic_frames=additional_semantic_frames,
-                                        zipfian_alpha=zipfian_alpha,
-                                        error_bias=error_bias,
-                                        random_seed=random_seed)
+        self.lexicon = lexicon if lexicon else LexiconGenerator(vocab_sizes,
+                                                num_clusters=num_clusters,
+                                                additional_semantic_frames=additional_semantic_frames,
+                                                zipfian_alpha=zipfian_alpha,
+                                                error_bias=error_bias,
+                                                random_seed=random_seed)
 
         self.frames = FrameManager(self.lexicon.semantic_frames if frames is None else frames)
-        self.sentence_generator = SentenceGenerator(self.lexicon, self.frames)
+        self.sentence_generator = sentence_generator if sentence_generator else SentenceGenerator(self.lexicon, self.frames)
         self.evaluator = CorpusEvaluator()
 
     def __call__(self, *args, **kwargs):

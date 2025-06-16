@@ -17,7 +17,8 @@ class FrameManager:
         # Create template dictionary with weights
         if frames is None:
             # Use default templates with weights
-            self.frames = self._create_weighted_templates()
+            # self.frames = self._create_weighted_templates()
+            self.frames = self.create_weighted_templates()
         # elif isinstance(frames, dict):
         #     # check if each frame has a weight and a complexity level
         #     print('frames is a dict', frames)
