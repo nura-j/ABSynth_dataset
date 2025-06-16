@@ -81,7 +81,7 @@ from absynth.corpus import SynthCorpus
 corpus = SynthCorpus.load("corpus_full.json")
 ```
 
-## 📖 Documentation
+## Documentation
 
 ### Table of Contents
 
@@ -95,7 +95,7 @@ corpus = SynthCorpus.load("corpus_full.json")
 8. [License](#license)
 9. [Citation](#citation)
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ABSynth consists of four main packages:
 
