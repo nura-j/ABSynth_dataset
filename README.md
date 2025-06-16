@@ -292,13 +292,12 @@ print(f"Generated {len(corpus):,} sentences")
 
 ```python
 # Full format with all annotations
-generator.save_corpus("corpus_full.json", format_type="full", include_stats=True)
+# Save corpus
+corpus.save("corpus_full.json", indent=2)
 
-# Sentences only for quick processing
-generator.save_corpus("sentences.json", format_type="sentences_only")
-
-# Semantic annotations only
-generator.save_corpus("semantic.json", format_type="semantic_only")
+# Export in different formats
+corpus.export("corpus_semantic.json", format="semantic_annotations", indent=2) 
+corpus.export("corpus_sentences.json", format="sentences_only", indent=2)
 
 ```
 

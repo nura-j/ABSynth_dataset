@@ -202,6 +202,8 @@ class SyntheticCorpusGenerator:
 
                     if len(corpus) % 1000 == 0:
                         print(f"Generated {len(corpus)} sentences...")
+                    if len(corpus) >= num_sentences:
+                        break
 
         # Adjust corpus to exact target size and distributions
         corpus = self._adjust_corpus_distribution(
