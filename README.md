@@ -344,20 +344,6 @@ ABSynth provides comprehensive evaluation metrics:
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/nura-j/absynth.git
-cd absynth
-
-# Create and activate the conda environment
-conda env create -f environment.yml
-conda activate ABSYN_dataset
-
-# Install your project in development mode
-pip install -e .
-```
 
 ##  License
 
