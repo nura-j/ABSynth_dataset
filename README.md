@@ -10,6 +10,7 @@
 - **Rich Annotations**: POS tags, dependency parsing, constituency trees, and formal semantics
 - **Multiple Formats**: Export to JSON and specialized formats for different use cases
 - **Scalable Generation**: Efficient generation of large corpora with consistent quality
+- **Visualization Tools**: Analyze corpus properties, distributions, and semantic diversity
 
 ## Quick Start
 
@@ -53,6 +54,12 @@ corpus.export("corpus_sentences.json", format="sentences_only", indent=2)
 # Evaluate quality
 evaluation = generator.evaluate_corpus(corpus, calculate_suitability=True)
 print(f"Suitability Score: {evaluation['suitability']['suitability_score']:.2f}")
+
+# Visualize the corpus statistics
+from absynth.visualization import Visualizer
+visualizer = Visualizer(log_dir='./plots')
+visualizer.visualize(corpus)
+
 ```
 
 ```python
@@ -103,7 +110,8 @@ ABSynth consists of four main packages:
 absynth/
 ├── lexicon/           # Vocabulary management and word generation
 ├── sentence/          # Template-based sentence generation with semantic frames
-└── corpus/            # Large-scale corpus generation and evaluation
+├── corpus/            # Large-scale corpus generation and evaluation
+└──visualization/     # Visualization tools for corpus analysis    
 ```
 
 ### Core Components
