@@ -1,9 +1,6 @@
-from collections import Counter
-
 import matplotlib.pyplot as plt
-import numpy as np
-
 from absynth import SyntheticCorpusGenerator
+import seaborn as sns
 
 
 class Visualizer:
@@ -17,32 +14,6 @@ class Visualizer:
             os.makedirs(log_dir, exist_ok=True)
 
     def visualize(self, corpus):
-        """
-        We expect the stats to be a dictionary with keys like 'token_count', 'vocab_size', etc.
-        self.statistics = {
-            "corpus_size": len(corpus),
-            "token_statistics": {
-                "total_words": total_words,
-                "unique_words": unique_words,
-                "type_token_ratio": type_token_ratio,
-                "top_words": word_counts.most_common(20)
-            },
-            "sentence_statistics": {
-                "avg_length": avg_length,
-                "length_std": length_std,
-                "min_length": min(lengths) if lengths else 0,
-                "max_length": max(lengths) if lengths else 0,
-                "length_distribution": self._get_length_distribution(lengths)
-            },
-            "zipfian_analysis": zipf_analysis,
-            "entropy_statistics": entropy_analysis,
-            "complexity_distribution": complexity_dist,
-            "semantic_frame_analysis": semantic_analysis,
-            "bigram_statistics": bigram_stats
-        }
-        :param corpus:
-        :return:
-        """
         self.stats = corpus.statistics
         if not self.stats:
             from absynth.corpus.corpus_evaluator import CorpusEvaluator
@@ -55,7 +26,6 @@ class Visualizer:
         self._visualize_semantic_frame_analysis()
 
     def _visualize_token_statistics(self):
-
         token_stats = self.stats.get("token_statistics", {})
         if not token_stats:
             print("No token statistics available for visualization.")
@@ -66,21 +36,35 @@ class Visualizer:
         type_token_ratio = token_stats.get("type_token_ratio", 0.0)
         top_words = token_stats.get("top_words", [])
 
-        # Create a bar chart for top words
         if top_words:
             words, counts = zip(*top_words)
-            plt.bar(words, counts)
-            plt.title('Top Words in Corpus')
-            plt.xlabel('Words')
-            plt.ylabel('Frequency')
-            plt.xticks(rotation=45)
-            plt.tight_layout()
 
+            # Horizontal bar plot
+            plt.figure(figsize=(10, 6))
+            sns.barplot(x=counts, y=words, orient='h')
+            plt.title('Top Words in Corpus')
+            plt.xlabel('Frequency')
+            plt.ylabel('Words')
+            plt.tight_layout()
             if self.save_visualization and self.log_dir:
-                plt.savefig(f"{self.log_dir}/top_words.png")
+                plt.savefig(f"{self.log_dir}/top_words_horizontal.png", dpi=300)
+            plt.show()
+
+            # Cumulative distribution plot
+            cumulative = [sum(counts[:i + 1]) / sum(counts) for i in range(len(counts))]
+            plt.figure(figsize=(10, 4))
+            plt.plot(range(1, len(cumulative) + 1), cumulative, marker='o')
+            plt.title('Cumulative Frequency of Top Words')
+            plt.xlabel('Rank')
+            plt.ylabel('Cumulative Frequency')
+            plt.grid(True)
+            plt.tight_layout()
+            if self.save_visualization and self.log_dir:
+                plt.savefig(f"{self.log_dir}/top_words_cumulative.png", dpi=300)
             plt.show()
 
         print(f"Total Words: {total_words}, Unique Words: {unique_words}, Type-Token Ratio: {type_token_ratio:.2f}")
+
 
 
     def _visualize_sentence_statistics(self):
@@ -89,28 +73,22 @@ class Visualizer:
             print("No sentence statistics available for visualization.")
             return
 
-        avg_length = sentence_stats.get("avg_length", 0.0)
-        length_std = sentence_stats.get("length_std", 0.0)
-        min_length = sentence_stats.get("min_length", 0)
-        max_length = sentence_stats.get("max_length", 0)
         length_distribution = sentence_stats.get("length_distribution", {})
+        if not length_distribution:
+            print("No length distribution data.")
+            return
 
-        # Create a histogram for sentence lengths
-        if length_distribution:
-            lengths, counts = zip(*length_distribution.items())
-            plt.bar(lengths, counts)
-            plt.title('Sentence Length Distribution')
-            plt.xlabel('Sentence Length')
-            plt.ylabel('Frequency')
-            plt.xticks(rotation=45)
-            plt.tight_layout()
+        lengths, counts = zip(*length_distribution.items())
+        data = [length for length, count in zip(lengths, counts) for _ in range(count)]
 
-            if self.save_visualization and self.log_dir:
-                plt.savefig(f"{self.log_dir}/sentence_length_distribution.png")
-            plt.show()
-
-        print(f"Avg Length: {avg_length:.2f}, Length Std: {length_std:.2f}, Min Length: {min_length}, Max Length: {max_length}")
-
+        sns.histplot(data, bins=20, kde=True)
+        plt.title("Sentence Length Distribution")
+        plt.xlabel("Sentence Length")
+        plt.ylabel("Frequency")
+        plt.tight_layout()
+        if self.save_visualization and self.log_dir:
+            plt.savefig(f"{self.log_dir}/sentence_length_hist_kde.png", dpi=300)
+        plt.show()
 
     def _visualize_complexity_distribution(self):
         complexity_dist = self.stats.get("complexity_distribution", {})
@@ -131,8 +109,10 @@ class Visualizer:
             plt.tight_layout()
 
             if self.save_visualization and self.log_dir:
-                plt.savefig(f"{self.log_dir}/complexity_distribution.png")
+                plt.savefig(f"{self.log_dir}/complexity_distribution.png", dpi=300)
             plt.show()
+
+    import seaborn as sns
 
     def _visualize_semantic_frame_analysis(self):
         semantic_analysis = self.stats.get("semantic_frame_analysis", {})
@@ -144,28 +124,30 @@ class Visualizer:
         role_distribution = semantic_analysis.get("role_distribution", {})
         avg_arguments_per_sentence = semantic_analysis.get("avg_arguments_per_sentence", 0.0)
 
+        # Frame Distribution – horizontal bar plot
         if frame_distribution:
-            frames, counts = zip(*frame_distribution.items())
-            plt.bar(frames, counts)
+            frames, counts = zip(*sorted(frame_distribution.items(), key=lambda x: x[1], reverse=True))
+            plt.figure(figsize=(10, 6))
+            sns.barplot(x=counts, y=frames, orient='h')
             plt.title('Semantic Frame Distribution')
-            plt.xlabel('Frames')
-            plt.ylabel('Frequency')
-            plt.xticks(rotation=45)
+            plt.xlabel('Frequency')
+            plt.ylabel('Frames')
             plt.tight_layout()
-
             if self.save_visualization and self.log_dir:
-                plt.savefig(f"{self.log_dir}/semantic_frame_distribution.png")
+                plt.savefig(f"{self.log_dir}/semantic_frame_distribution.png", dpi=300)
             plt.show()
+
+        # Role Distribution – horizontal bar plot
         if role_distribution:
-            roles, counts = zip(*role_distribution.items())
-            plt.bar(roles, counts)
+            roles, counts = zip(*sorted(role_distribution.items(), key=lambda x: x[1], reverse=True))
+            plt.figure(figsize=(10, 6))
+            sns.barplot(x=counts, y=roles, orient='h')
             plt.title('Semantic Role Distribution')
-            plt.xlabel('Roles')
-            plt.ylabel('Frequency')
-            plt.xticks(rotation=45)
+            plt.xlabel('Frequency')
+            plt.ylabel('Roles')
             plt.tight_layout()
-
             if self.save_visualization and self.log_dir:
-                plt.savefig(f"{self.log_dir}/semantic_role_distribution.png")
+                plt.savefig(f"{self.log_dir}/semantic_role_distribution.png", dpi=300)
             plt.show()
+
         print(f"Avg Arguments per Sentence: {avg_arguments_per_sentence:.2f}")

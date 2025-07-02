@@ -131,22 +131,22 @@ absynth/
 from absynth.lexicon import Vocabulary, LexiconGenerator
 
 # Define vocabulary sizes
-vocab = Vocabulary(
-    noun=300,
-    transitive_verb=40,
-    intransitive_verb=25,
-    communication_verb=20,
-    motion_verb=20,
-    change_verb=15,
-    adjective=40,
-    adverb=25,
-    location=150,
-    temporal=35,
-    instrument=25,
-    preposition=15,
-    conjunction=10,
-    determiner=8
-)
+vocab = Vocabulary({
+    "noun":300,
+    "transitive_verb":40,
+    "intransitive_verb":25,
+    "communication_verb":20,
+    "motion_verb":20,
+    "change_verb":15,
+    "adjective":40,
+    "adverb":25,
+    "location":150,
+    "temporal":35,
+    "instrument":25,
+    "preposition":15,
+    "conjunction":10,
+    "determiner":8
+})
 
 # Create lexicon generator with all features
 lexicon = LexiconGenerator(
@@ -275,11 +275,11 @@ generator = SyntheticCorpusGenerator()
 
 # Generate large corpus with specific distributions
 corpus = generator.generate_corpus(
-    num_sentences=200,
+    num_sentences=50000,
     complexity_distribution={
-        "simple": 0.55,
+        "simple": 0.45,
         "medium": 0.35, 
-        "complex": 0.1
+        "complex": 0.2
     },
     semantic_frame_distribution={
         "transitive_action": 0.4,
