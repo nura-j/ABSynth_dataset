@@ -1,3 +1,4 @@
+import copy
 import random
 import re
 from typing import Dict, List, Tuple, Optional, Any
@@ -7,6 +8,7 @@ import json
 import csv
 import os
 from absynth import SynthCorpus
+from absynth.lexicon.semantic_roles import SemanticRole
 
 
 class InterventionType(StrEnum):
@@ -26,6 +28,8 @@ class InterventionResult:
     replacement_word: Optional[str]
     position: Optional[int]
     metadata: Dict[str, Any]
+    original_metadata: Optional[Dict[str, Any]] = None
+    modified_metadata: Optional[Dict[str, Any]] = None
 
 
 class Intervention:
@@ -163,7 +167,7 @@ class Intervention:
             modified_words = words.copy()
             modified_words[target_position] = synonym
             modified_sentence = ' '.join(modified_words)
-            print("Modified sentence:", modified_sentence)
+            # print("Modified sentence:", modified_sentence)
             return InterventionResult(
                 original_sentence=sentence,
                 modified_sentence=modified_sentence,
@@ -194,7 +198,63 @@ class Intervention:
         Returns:
             InterventionResult or None if intervention failed
         """
-        raise NotImplementedError("Subclasses must implement role_violation method")
+        sentence_data = self.corpus[idx]
+        sentence = sentence_data['sentence']
+        semantic_roles = sentence_data.get('semantic_roles', {})
+
+        if not semantic_roles:
+            return None
+
+        # Select a random argument position to violate
+        available_args = list(semantic_roles.keys())
+        if not available_args:
+            return None
+
+        target_arg = random.choice(available_args)
+        role_info = semantic_roles[target_arg]
+
+        target_word = role_info['word']
+        target_role = role_info['role']
+        target_position = role_info['position']
+        print("Applying role violation to sentence:", sentence)
+
+        print("Target argument for violation:", target_arg)
+        print("Role info:", role_info)
+
+        # Find a word that violates the expected role
+        violating_word = self._find_role_violating_word(target_role)
+
+        if not violating_word:
+            return None
+
+        # Replace the word with the violating word
+        words = sentence.split()
+        print("Target word for violation:", target_word)
+        print('original words:', words)
+        if target_position < len(words):
+            modified_words = words.copy()
+            modified_words[target_position] = violating_word
+            print("Modified words after violation:", modified_words)
+            modified_sentence = ' '.join(modified_words)
+
+            return InterventionResult(
+                original_sentence=sentence,
+                modified_sentence=modified_sentence,
+                intervention_type=self.intervention_type.value,
+                target_role=target_role,
+                target_word=target_word,
+                replacement_word=violating_word,
+                position=target_position,
+                metadata={
+                    'sentence_idx': idx,
+                    'semantic_frame': sentence_data.get('metadata', {}).get('frame'),
+                    'violation_type': 'role_mismatch',
+                    'intervention_success': True
+                }
+            )
+
+        return None
+
 
     def elimination(self, idx: int) -> Optional[InterventionResult]:
         """
@@ -208,24 +268,29 @@ class Intervention:
             InterventionResult or None if intervention failed
         """
         sentence_data = self.corpus[idx]
+        sentence_data_modified = copy.deepcopy(sentence_data)
+
         sentence = sentence_data['sentence']
         semantic_roles = sentence_data.get('semantic_roles', {})
+        # print('Original sentence1:')
+        # for key, value in sentence_data.items():
+        #     print(f"{key}: {value}")
         # print("Applying elimination intervention to sentence:", sentence,)
         # print("Semantic roles:", semantic_roles)
-
+        # print('sentence data:', sentence_data)
+        # for key, value in sentence_data.items():
+        #     print(f"{key}: {value}")
 
         if not semantic_roles:
             return None
 
         # Select a random argument to eliminate
         available_args = list(semantic_roles.keys())
-        # print("Available semantic roles for elimination:", available_args)
         if not available_args:
             return None
 
         target_arg = random.choice(available_args)
         role_info = semantic_roles[target_arg]
-
         target_word = role_info['word']
         target_role = role_info['role']
         target_position = role_info['position']
@@ -236,25 +301,93 @@ class Intervention:
             return None
 
         modified_words = words.copy()
-
         # Remove the target word
         del modified_words[target_position]
+        # updating the sentence data to reflect the remova
 
         # print('Original sentence:', sentence)
         # print("Modified words after removal:", modified_words)
         # Clean up the sentence by updating the others
-        modified_words = self._clean_up_words(modified_words, target_position)
+        modified_words, removed_indices = self._clean_up_words(modified_words, target_position)
+        removed_indices = sorted(set(removed_indices))
+        # print("Removed indices after cleanup:", removed_indices)
         # print("Modified words after cleanup:", modified_words)
         # print('*' * 20)
+        """
+        sentence: noun12 motion_verb14s location60
+        semantic_roles: {'arg0': {'word': 'noun12', 'role': 'Theme', 'position': 0}, 'arg1': {'word': 'location60', 'role': 'Goal', 'position': 2}}
+        semantics: ∃e.motion(e) ∧ Theme(e, noun12) ∧ Goal(e, location60)
+        linguistic_annotations: {'pos_tags': ['NN', 'VB', 'NN'], 
+                                'semantic_roles': {'noun12': 'Theme', 'location60': 'Goal'}, 
+                                'formal_semantics': 'λx0 x2.∃e.motion(e) ∧ Theme(x0) ∧ Goal(x2)'}
+        metadata: {'complexity': 'simple', 
+                'frame': 'motion', 
+                'template': {'frame': 'motion', 'args': ['arg0', 'verb', 'arg1'], 
+                            'roles': {'arg0': <SemanticRole.THEME: 'Theme'>, 'arg1': <SemanticRole.GOAL: 'Goal'>}, 
+                            'weight': 0.16666666666666666}, 
+                            'length': 3, 
+                            'entropy_profile': [6.949784284662096, 6.949784284662096, 6.949784284662096], 
+                            'avg_entropy': 6.949784284662097}
+        corpus_metadata: {'target_frame': 'basic_intransitive', 'sentence_id': 1}
+        """
+        sentence_data_modified['sentence'] = ' '.join(modified_words)
+
+        #################################### # Update semantic roles ####################################
+        for arg_key, role in list(sentence_data_modified.get('semantic_roles', {}).items()):
+            print('Processing semantic role:', arg_key, 'with role info:', role)
+            if role['position'] in removed_indices:
+                # Remove the semantic role entry if its position was removed
+                # print(f"Removing semantic role {arg_key} at position {role['position']}")
+                removed_word = role['word']
+                sentence_data_modified['semantic_roles'].pop(arg_key, None)
+                annotations = sentence_data_modified.get('linguistic_annotations', {})
+                if 'pos_tags' in annotations and role['position'] < len(annotations['pos_tags']):
+                    del annotations['pos_tags'][role['position']]
+
+                if 'semantic_roles' in annotations and removed_word in annotations['semantic_roles']:
+                    del annotations['semantic_roles'][removed_word]
+
+                if 'formal_semantics' in annotations:
+                    annotations['formal_semantics'] = annotations['formal_semantics'].replace(removed_word,
+                                                                                              'DELETED_WORD')
+                if 'semantics' in sentence_data_modified:
+                    # Remove the word from the semantics representation
+                    sentence_data_modified['semantics'] = sentence_data_modified['semantics'].replace(removed_word,
+                                                                                                      'DELETED_WORD')
+                # Update metadata
+                metadata = sentence_data_modified.get('metadata', {})
+                if 'length' in metadata:
+                    metadata['length'] = max(0, metadata['length'] - 1)
+                if 'entropy_profile' in metadata:
+                    if role['position'] < len(metadata['entropy_profile']):
+                        del metadata['entropy_profile'][role['position']]
+                    if metadata['entropy_profile']:
+                        metadata['avg_entropy'] = sum(metadata['entropy_profile']) / len( metadata['entropy_profile'])
+                    else:
+                        metadata['avg_entropy'] = 0.0 #arg_key
+                if 'roles' in metadata:
+                    if arg_key in metadata['roles']:
+                        del metadata['roles'][arg_key]
+                if 'args' in metadata:
+                    if arg_key in metadata['args']:
+                        metadata['args'].remove(arg_key)
 
         if len(modified_words) == 0:
             return None
 
         modified_sentence = ' '.join(modified_words)
         words_removed = len(words) - len(modified_words)
+        # print('Original sentence2:')
+        # for key, value in sentence_data.items():
+        #     print(f"{key}: {value}")
+        # print('Updated data after removal:')
+        # for key, value in sentence_data_modified.items():
+        #     print(f"{key}: {value}")
         return InterventionResult(
             original_sentence=sentence,
             modified_sentence=modified_sentence,
+            original_metadata=sentence_data,
+            modified_metadata=sentence_data_modified,
             intervention_type=self.intervention_type.value,
             target_role=target_role,
             target_word=target_word,
@@ -319,7 +452,45 @@ class Intervention:
             Word that violates the role or None
         """
         # Define role violation mappings
-        raise NotImplementedError("Subclasses must implement _find_role_violating_word method")
+        '''
+            AGENT = "Agent"  # The doer of the action
+            PATIENT = "Patient"  # The entity affected by the action
+            THEME = "Theme"  # The entity moved or described
+            EXPERIENCER = "Experiencer"  # The entity experiencing something
+            INSTRUMENT = "Instrument"  # The tool used
+            LOCATION = "Location"  # Where something happens
+            SOURCE = "Source"  # Starting point
+            GOAL = "Goal"  # End point
+            TIME = "Time"  # When something happens
+        '''
+        # raise NotImplementedError("Subclasses must implement _find_role_violating_word method")
+        role_violations = {
+            SemanticRole.AGENT.value: ['location', 'temporal', 'instrument'],
+            SemanticRole.PATIENT.value: ['temporal', 'adverb', 'instrument'],
+            SemanticRole.THEME.value: ['adverb', 'adjective', 'temporal'],
+            SemanticRole.LOCATION.value: ['instrument', 'noun', 'temporal'],
+            SemanticRole.TIME.value: ['location', 'instrument', 'noun'],
+            SemanticRole.INSTRUMENT.value: ['temporal', 'location', 'adverb'],
+            SemanticRole.EXPERIENCER.value: ['location', 'temporal', 'instrument'],
+            SemanticRole.SOURCE.value: ['temporal', 'instrument', 'adverb'],
+            SemanticRole.GOAL.value: ['temporal', 'instrument', 'adverb']
+        }
+
+        violating_categories = role_violations.get(target_role, ['adverb'])
+
+        # Select a random violating category and word
+        for category in violating_categories:
+            if category in self.lexicon_words and self.lexicon_words[category]:
+                return random.choice(self.lexicon_words[category])
+
+        # Fallback: use any random word from a different category
+        all_categories = list(self.lexicon_words.keys())
+        if all_categories:
+            fallback_category = random.choice(all_categories)
+            if self.lexicon_words[fallback_category]:
+                return random.choice(self.lexicon_words[fallback_category])
+
+        return None
 
     @staticmethod
     def _extract_word_category(word: str) -> str:
@@ -337,7 +508,7 @@ class Intervention:
         category = re.sub(r'(ed|s|ing)$', '', category)  # Remove common suffixes
         return category
 
-    def _clean_up_words(self, words: List[str], removed_position: int) -> List[str]:
+    def _clean_up_words(self, words: List[str], removed_position: int) -> Tuple[List[str], List[int]]:
         """
         Clean up prepositions, conjunctions after word removal.
         "preposition" (e.g., in, on, at)
@@ -351,8 +522,9 @@ class Intervention:
         Returns:
             Cleaned list of words
         """
+        removed_indices = [removed_position]
         if not words:
-            return words
+            return words, removed_indices
 
         function_words = ['preposition', 'conjunction', 'determiner'] # adding more than the basic ones just in case
         def is_function_word(word: str) -> bool:
@@ -370,6 +542,7 @@ class Intervention:
             # print("Previous word:", prev_word)
             if prev_word and is_function_word(prev_word):
                 del words[removed_position - 1]
+                removed_indices.append(removed_position - 1)
                 # print('updated words after removing previous word:', words)
                 removed_position -= 1
 
@@ -378,9 +551,10 @@ class Intervention:
             # print("Next word:", next_word)
             if next_word and is_function_word(next_word):
                 del words[removed_position]
+                removed_indices.append(removed_position+1)
                 # print('updated words after removing next word:', words)
 
-        return words
+        return words, removed_indices
 
 
 
@@ -397,6 +571,7 @@ class Intervention:
                                     output_path: str, format: str = "json"):
         """
         Export intervention results as a dataset for analysis.
+        todo: unify this with the corpus export functionality
 
         Args:
             results: List of intervention results

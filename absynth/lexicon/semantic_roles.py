@@ -15,6 +15,7 @@ class SemanticRole(StrEnum):
     SOURCE = "Source"  # Starting point
     GOAL = "Goal"  # End point
     TIME = "Time"  # When something happens
+    # Stimulus Recipient Beneficiary Manner Purpose Cause
 
 
 @dataclass
