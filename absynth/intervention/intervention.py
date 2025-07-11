@@ -1,8 +1,11 @@
 import random
+import re
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from enum import StrEnum
-
+import json
+import csv
+import os
 from absynth import SynthCorpus
 
 
@@ -37,7 +40,7 @@ class Intervention:
             intervention_type: Type of intervention to apply
             all: Whether to apply intervention to all sentences or subset
             subset_percentage: Fraction of sentences to intervene on if not all
-            random_seed: Random seed for reproducibility
+            random_seed: Random seed for reproducibility - should already be set in main script but just in case
         """
         if random_seed is not None:
             random.seed(random_seed)
@@ -69,7 +72,43 @@ class Intervention:
         Returns:
             List of InterventionResult objects
         """
-        raise NotImplementedError("Subclasses must implement apply_interventions method")
+        results = []
+
+        # Select subset of sentences to intervene on
+        if self.all:
+            target_indices = list(range(len(self.corpus)))
+        else:
+            target_indices = random.sample(range(len(self.corpus)), self.subset_size)
+
+        print('Applying interventions to {} sentences...'.format(len(target_indices)))
+        print('Target indices:', target_indices)
+        print('Intervention type:', self.intervention_type.value)
+        print('Subset size:', self.subset_size)
+        print('Total sentences in corpus:', len(self.corpus))
+
+        for idx in target_indices:
+            sentence_data = self.corpus[idx]
+
+            try:
+                if self.intervention_type == InterventionType.SYNONYMIC_SUBSTITUTION:
+                    result = self.synonymic_substitution(idx)
+                elif self.intervention_type == InterventionType.ROLE_VIOLATION:
+                    result = self.role_violation(idx)
+                elif self.intervention_type == InterventionType.ELIMINATION:
+                    result = self.elimination(idx)
+                else:
+                    raise ValueError(f"Unknown intervention type: {self.intervention_type}")
+
+                if result:
+                    results.append(result)
+                    self.intervention_stats['successful_interventions'] += 1
+
+            except Exception as e:
+                print(f"Failed to apply intervention to sentence {idx}: {e}")
+                self.intervention_stats['failed_interventions'] += 1
+
+            self.intervention_stats['total_interventions'] += 1
+        return results
 
     def synonymic_substitution(self, idx: int) -> Optional[InterventionResult]:
         """
@@ -82,7 +121,67 @@ class Intervention:
         Returns:
             InterventionResult or None if intervention failed
         """
-        raise NotImplementedError("Subclasses must implement synonymic_substitution method")
+        sentence_data = self.corpus[idx]
+        sentence = sentence_data['sentence']
+        semantic_roles = sentence_data.get('semantic_roles', {})
+        # print("Applying synonymic substitution to sentence:", sentence)
+        # print("Semantic roles:", semantic_roles)
+
+
+        if not semantic_roles:
+            return None
+
+        available_args = list(semantic_roles.keys())
+        # print("Available semantic roles:", available_args)
+
+        if not available_args:
+            return None
+
+        target_arg = random.choice(available_args)
+        role_info = semantic_roles[target_arg]
+
+        # print("Selected target argument:", target_arg)
+        # print("Role info:", role_info)
+
+        target_word = role_info['word']
+        # print("Target word for substitution:", target_word)
+        target_role = role_info['role']
+        # print("Target role for substitution:", target_role)
+        target_position = role_info['position']
+        # print("Target position in sentence:", target_position)
+
+        # Find synonyms from the same semantic cluster
+        synonym = self._find_synonym(target_word)
+        print("Found synonym:", synonym)
+
+        if not synonym or synonym == target_word:
+            return None
+
+        # Replace the word in the sentence
+        words = sentence.split()
+        if target_position < len(words):
+            modified_words = words.copy()
+            modified_words[target_position] = synonym
+            modified_sentence = ' '.join(modified_words)
+            print("Modified sentence:", modified_sentence)
+            return InterventionResult(
+                original_sentence=sentence,
+                modified_sentence=modified_sentence,
+                intervention_type=self.intervention_type.value,
+                target_role=target_role,
+                target_word=target_word,
+                replacement_word=synonym,
+                position=target_position,
+                metadata={
+                    'sentence_idx': idx,
+                    'semantic_frame': sentence_data.get('metadata', {}).get('frame'),
+                    'intervention_success': True
+                }
+            )
+
+        return None
+
+
 
     def role_violation(self, idx: int) -> Optional[InterventionResult]:
         """
@@ -110,19 +209,42 @@ class Intervention:
         """
         raise NotImplementedError("Subclasses must implement elimination method")
 
-    def _find_synonym(self, target_word: str, target_role: str) -> Optional[str]:
+    def _find_synonym(self, target_word: str) -> Optional[str]:
         """
         Find a synonym for the target word within the same semantic cluster.
 
         Args:
             target_word: Word to find synonym for
-            target_role: Semantic role of the target word
-
         Returns:
             Synonym word or None if not found
         """
-        # Extract word category from synthetic word (e.g., "noun1" -> "noun")
-        raise NotImplementedError("Subclasses must implement _find_synonym method")
+        # Extract word category from synthetic word (e.g. "noun1" -> "noun")
+        word_category = self._extract_word_category(target_word)
+        if word_category not in self.semantic_clusters: # we use a fallback here - rand word from the lexicon
+            if word_category in self.lexicon_words:
+                available_words = [w for w in self.lexicon_words[word_category] if w != target_word]
+                if available_words:
+                    return random.choice(available_words)
+                else:
+                    return None
+            else:
+                return None
+
+        target_cluster = None
+        for cluster_name, cluster_words in self.semantic_clusters[word_category].items():
+            if target_word in cluster_words:
+                target_cluster = cluster_words
+                break
+        if target_cluster:
+            # Filter out the target word itself
+            synonyms = [w for w in target_cluster if w != target_word]
+            if synonyms:
+                return random.choice(synonyms)
+            else:
+                return None
+        else:
+            return None
+
 
     def _find_role_violating_word(self, target_role: str) -> Optional[str]:
         """
@@ -137,7 +259,8 @@ class Intervention:
         # Define role violation mappings
         raise NotImplementedError("Subclasses must implement _find_role_violating_word method")
 
-    def _extract_word_category(self, word: str) -> str:
+    @staticmethod
+    def _extract_word_category(word: str) -> str:
         """
         Extract the category from a synthetic word (e.g., "noun1" -> "noun").
 
@@ -148,7 +271,9 @@ class Intervention:
             Word category
         """
         # Remove digits and common suffixes
-        raise NotImplementedError("Subclasses must implement _extract_word_category method")
+        category = re.sub(r'\d+$', '', word)  # Remove trailing digits
+        category = re.sub(r'(ed|s|ing)$', '', category)  # Remove common suffixes
+        return category
 
     def _clean_up_function_words(self, words: List[str], removed_position: int) -> List[str]:
         """
@@ -162,20 +287,6 @@ class Intervention:
             Cleaned list of words
         """
         raise NotImplementedError("Subclasses must implement _clean_up_function_words method")
-
-    def generate_prompts(self, results: List[InterventionResult],
-                         prompt_template: str = None) -> List[str]:
-        """
-        Generate prompts for mechanistic interpretability experiments.
-
-        Args:
-            results: List of intervention results
-            prompt_template: Template for prompt generation
-
-        Returns:
-            List of formatted prompts
-        """
-        raise NotImplementedError("Subclasses must implement generate_prompts method")
 
     def get_intervention_statistics(self) -> Dict[str, Any]:
         """
@@ -196,7 +307,45 @@ class Intervention:
             output_path: Path to save the dataset
             format: Export format ("json" or "csv")
         """
-        raise NotImplementedError("Subclasses must implement export_intervention_dataset method")
+        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+
+        if format == "json":
+            export_data = {
+                "intervention_type": self.intervention_type.value,
+                "intervention_statistics": self.get_intervention_statistics(),
+                "results": [
+                    {
+                        "original_sentence": r.original_sentence,
+                        "modified_sentence": r.modified_sentence,
+                        "intervention_type": r.intervention_type,
+                        "target_role": r.target_role,
+                        "target_word": r.target_word,
+                        "replacement_word": r.replacement_word,
+                        "position": r.position,
+                        "metadata": r.metadata
+                    }
+                    for r in results
+                ]
+            }
+
+            with open(output_path, 'w') as f:
+                json.dump(export_data, f, indent=2)
+
+        elif format == "csv":
+            with open(output_path, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    "original_sentence", "modified_sentence", "intervention_type",
+                    "target_role", "target_word", "replacement_word", "position",
+                    "sentence_idx", "semantic_frame"
+                ])
+
+                for r in results:
+                    writer.writerow([
+                        r.original_sentence, r.modified_sentence, r.intervention_type,
+                        r.target_role, r.target_word, r.replacement_word, r.position,
+                        r.metadata.get('sentence_idx'), r.metadata.get('semantic_frame')
+                    ])
 
 
 # Convenience functions for each intervention type
