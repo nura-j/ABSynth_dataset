@@ -106,6 +106,15 @@ class Intervention:
                 if result:
                     results.append(result)
                     self.intervention_stats['successful_interventions'] += 1
+                    role = result.target_role
+                    frame = sentence_data.get('metadata', {}).get('frame', 'unknown')
+
+                    if role:
+                        self.intervention_stats['intervention_by_role'][role] = \
+                            self.intervention_stats['intervention_by_role'].get(role, 0) + 1
+
+                    self.intervention_stats['intervention_by_frame'][frame] = \
+                        self.intervention_stats['intervention_by_frame'].get(frame, 0) + 1
 
             except Exception as e:
                 print(f"Failed to apply intervention to sentence {idx}: {e}")
@@ -375,7 +384,7 @@ class Intervention:
 
         #################################### # Update semantic roles ####################################
         for arg_key, role in list(sentence_data_modified.get('semantic_roles', {}).items()):
-            print('Processing semantic role:', arg_key, 'with role info:', role)
+            # print('Processing semantic role:', arg_key, 'with role info:', role)
             if role['position'] in removed_indices:
                 # Remove the semantic role entry if its position was removed
                 # print(f"Removing semantic role {arg_key} at position {role['position']}")
@@ -599,14 +608,14 @@ class Intervention:
 
 
 
-    def get_intervention_statistics(self) -> Dict[str, Any]:
-        """
-        Get statistics about applied interventions.
-
-        Returns:
-            Dictionary with intervention statistics
-        """
-        return self.intervention_stats.copy()
+    # def get_intervention_statistics(self) -> Dict[str, Any]:
+    #     """
+    #     Get statistics about applied interventions.
+    #
+    #     Returns:
+    #         Dictionary with intervention statistics
+    #     """
+    #     return self.intervention_stats.copy()
 
     def export_intervention_dataset(self, results: List[InterventionResult],
                                     output_path: str, format: str = "json"):
@@ -624,7 +633,7 @@ class Intervention:
         if format == "json":
             export_data = {
                 "intervention_type": self.intervention_type.value,
-                "intervention_statistics": self.get_intervention_statistics(),
+                "intervention_statistics": self.get_intervention_statistics(results),
                 "results": [
                     {
                         "original_sentence": r.original_sentence,
@@ -660,27 +669,54 @@ class Intervention:
                         r.metadata.get('sentence_idx'), r.metadata.get('semantic_frame')
                     ])
 
+    def get_intervention_statistics(self, results: List[InterventionResult]) -> dict:
+        """
+        Compute basic statistics over the intervention results.
+        """
+        total = len(results)
+        successful = sum(1 for r in results if r.metadata.get("intervention_success", False))
+
+        return {
+            "total_attempted": total,
+            "successful_interventions": successful,
+            "success_rate": round(successful / total, 2) if total else 0.0
+        }
+
 
 # Convenience functions for each intervention type
 def apply_synonymic_substitution(corpus: SynthCorpus, subset_percentage: float = 0.2,
-                                 random_seed: Optional[int] = None) -> List[InterventionResult]:
+                                 random_seed: Optional[int] = None, save_results : bool = False,
+                                 save_path : str = None, format : str = 'json') -> List[InterventionResult]:
     """Apply synonymic substitution intervention to corpus."""
     intervention = Intervention(corpus, InterventionType.SYNONYMIC_SUBSTITUTION.value,
                                 subset_percentage=subset_percentage, random_seed=random_seed)
-    return intervention.apply_interventions()
+    results = intervention.apply_interventions()
+    if save_results and save_path:
+        intervention.export_intervention_dataset(results, save_path, format=format)
+    return results
 
 
 def apply_role_violation(corpus: SynthCorpus, subset_percentage: float = 0.2,
-                         random_seed: Optional[int] = None) -> List[InterventionResult]:
+                         random_seed: Optional[int] = None, save_results : bool = False,
+                         save_path : str = None, format : str = 'json') -> List[InterventionResult]:
     """Apply role violation intervention to corpus."""
     intervention = Intervention(corpus, InterventionType.ROLE_VIOLATION.value,
                                 subset_percentage=subset_percentage, random_seed=random_seed)
-    return intervention.apply_interventions()
+    results = intervention.apply_interventions()
+    if save_results and save_path:
+        intervention.export_intervention_dataset(results, save_path, format=format)
+    return results
 
 
 def apply_elimination(corpus: SynthCorpus, subset_percentage: float = 0.2,
-                      random_seed: Optional[int] = None) -> List[InterventionResult]:
+                      random_seed: Optional[int] = None,  save_results : bool = False,
+                      save_path : str = None, format : str = 'json') -> List[InterventionResult]:
     """Apply elimination intervention to corpus."""
     intervention = Intervention(corpus, InterventionType.ELIMINATION.value,
                                 subset_percentage=subset_percentage, random_seed=random_seed)
-    return intervention.apply_interventions()
+    results = intervention.apply_interventions()
+    if save_results and save_path:
+        intervention.export_intervention_dataset(results, save_path, format=format)
+    return results
+
+
