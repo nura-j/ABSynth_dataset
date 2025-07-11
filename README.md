@@ -11,6 +11,8 @@
 - **Multiple Formats**: Export to JSON and specialized formats for different use cases
 - **Scalable Generation**: Efficient generation of large corpora with consistent quality
 - **Visualization Tools**: Analyze corpus properties, distributions, and semantic diversity
+- **Intervention Framework**: Perform automated perturbations like synonymic substitution, semantic role violation, and argument elimination for probing model robustness
+
 
 ## Quick Start
 
@@ -98,9 +100,10 @@ corpus = SynthCorpus.load("corpus_full.json")
 4. [Corpus Generation](#corpus-generation)
 5. [Analysis Tools](#analysis-tools)
 6. [Evaluation Metrics](#evaluation-metrics)
-7. [Contributing](#contributing)
-8. [License](#license)
-9. [Citation](#citation)
+7. [Intervention Framework](#intervention-framework)
+8. [Contributing](#contributing)
+9. [License](#license)
+10. [Citation](#citation)
 
 ## Architecture Overview
 
@@ -111,7 +114,8 @@ absynth/
 ├── lexicon/           # Vocabulary management and word generation
 ├── sentence/          # Template-based sentence generation with semantic frames
 ├── corpus/            # Large-scale corpus generation and evaluation
-└──visualization/     # Visualization tools for corpus analysis    
+├── intervention/       # Automated perturbation framework for generated corpus
+└── visualization/     # Visualization tools for corpus analysis    
 ```
 
 ### Core Components
@@ -121,6 +125,8 @@ absynth/
 - **SentenceGenerator**: Creates annotated sentences with linguistic features
 - **SyntheticCorpusGenerator**: Orchestrates large-scale corpus generation
 - **SynthCorpus**: Provides core corpus data, metadata and functionalities
+- **Visualizer**: Visualizes corpus statistics and distributions
+- **InterventionManager**: Applies perturbations to corpus for robustness testing
 - **CorpusEvaluator**: Provides quality assessment and NLP suitability metrics
 
 ## Lexicon System
@@ -346,6 +352,27 @@ ABSynth provides comprehensive evaluation metrics:
 - **Recommendations**: Specific suggestions for improvement
 
 
+## Intervention 
+
+ABSynth supports applying controlled interventions for interpretability, robustness, and probing studies:
+
+```python
+from absynth.intervention import (
+    apply_synonymic_substitution,
+    apply_role_violation,
+    apply_elimination,
+    InterventionManager
+)
+
+# Apply interventions
+synonymic_results = apply_synonymic_substitution(corpus, subset_percentage=0.3, save_results=True, save_path="synonymic_substitution_results.json")
+violation_results = apply_role_violation(corpus, subset_percentage=0.2) # if save_results=False, results are not saved
+elimination_results = apply_elimination(corpus, subset_percentage=0.2)
+
+# Export datasets
+intervention = InterventionManager(corpus, "role_violation")
+intervention.export_intervention_dataset(violation_results, "role_violation_dataset.json")
+```
 
 
 ## Contributing
@@ -355,7 +382,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ##  License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
 
 ## Citation
 
@@ -363,6 +390,13 @@ If you use ABSynth in your research, please cite:
 
 
 ```bibtex
-@software{...
+@misc{aljaafari2025tracetraininginferencetimeinterpretability,
+      title={TRACE: Training and Inference-Time Interpretability Analysis for Language Models}, 
+      author={Nura Aljaafari and Danilo S. Carvalho and André Freitas},
+      year={2025},
+      eprint={2507.03668},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2507.03668}, 
 }
 ```

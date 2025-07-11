@@ -32,7 +32,7 @@ class InterventionResult:
     modified_metadata: Optional[Dict[str, Any]] = None
 
 
-class Intervention:
+class InterventionManager:
     def __init__(self, corpus: SynthCorpus, intervention_type: str,
                  all: bool = False, subset_percentage: float = 0.2,
                  random_seed: Optional[int] = None):
@@ -688,8 +688,8 @@ def apply_synonymic_substitution(corpus: SynthCorpus, subset_percentage: float =
                                  random_seed: Optional[int] = None, save_results : bool = False,
                                  save_path : str = None, format : str = 'json') -> List[InterventionResult]:
     """Apply synonymic substitution intervention to corpus."""
-    intervention = Intervention(corpus, InterventionType.SYNONYMIC_SUBSTITUTION.value,
-                                subset_percentage=subset_percentage, random_seed=random_seed)
+    intervention = InterventionManager(corpus, InterventionType.SYNONYMIC_SUBSTITUTION.value,
+                                       subset_percentage=subset_percentage, random_seed=random_seed)
     results = intervention.apply_interventions()
     if save_results and save_path:
         intervention.export_intervention_dataset(results, save_path, format=format)
@@ -700,8 +700,8 @@ def apply_role_violation(corpus: SynthCorpus, subset_percentage: float = 0.2,
                          random_seed: Optional[int] = None, save_results : bool = False,
                          save_path : str = None, format : str = 'json') -> List[InterventionResult]:
     """Apply role violation intervention to corpus."""
-    intervention = Intervention(corpus, InterventionType.ROLE_VIOLATION.value,
-                                subset_percentage=subset_percentage, random_seed=random_seed)
+    intervention = InterventionManager(corpus, InterventionType.ROLE_VIOLATION.value,
+                                       subset_percentage=subset_percentage, random_seed=random_seed)
     results = intervention.apply_interventions()
     if save_results and save_path:
         intervention.export_intervention_dataset(results, save_path, format=format)
@@ -712,8 +712,8 @@ def apply_elimination(corpus: SynthCorpus, subset_percentage: float = 0.2,
                       random_seed: Optional[int] = None,  save_results : bool = False,
                       save_path : str = None, format : str = 'json') -> List[InterventionResult]:
     """Apply elimination intervention to corpus."""
-    intervention = Intervention(corpus, InterventionType.ELIMINATION.value,
-                                subset_percentage=subset_percentage, random_seed=random_seed)
+    intervention = InterventionManager(corpus, InterventionType.ELIMINATION.value,
+                                       subset_percentage=subset_percentage, random_seed=random_seed)
     results = intervention.apply_interventions()
     if save_results and save_path:
         intervention.export_intervention_dataset(results, save_path, format=format)
