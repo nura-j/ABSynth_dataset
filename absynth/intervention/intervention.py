@@ -427,6 +427,7 @@ class Intervention:
             with open(output_path, 'w') as f:
                 json.dump(export_data, f, indent=2)
 
+
         elif format == "csv":
             with open(output_path, 'w', newline='') as f:
                 writer = csv.writer(f)
