@@ -638,6 +638,8 @@ class InterventionManager:
                     {
                         "original_sentence": r.original_sentence,
                         "modified_sentence": r.modified_sentence,
+                        "original_metadata":r.original_metadata,
+                        "modified_metadata": r.modified_metadata,
                         "intervention_type": r.intervention_type,
                         "target_role": r.target_role,
                         "target_word": r.target_word,

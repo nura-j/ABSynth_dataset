@@ -399,6 +399,8 @@ The exported JSON includes:
     {
       "original_sentence": "noun3 transitive_verb12 noun14",
       "modified_sentence": "noun3 transitive_verb12 location5",
+      "original_metadata": {...},
+      "modified_metadata": {...},
       "intervention_type": "role_violation",
       "target_role": "Patient",
       "target_word": "noun14",
