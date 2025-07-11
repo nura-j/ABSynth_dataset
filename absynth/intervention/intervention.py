@@ -80,11 +80,11 @@ class Intervention:
         else:
             target_indices = random.sample(range(len(self.corpus)), self.subset_size)
 
-        print('Applying interventions to {} sentences...'.format(len(target_indices)))
-        print('Target indices:', target_indices)
-        print('Intervention type:', self.intervention_type.value)
-        print('Subset size:', self.subset_size)
-        print('Total sentences in corpus:', len(self.corpus))
+        # print('Applying interventions to {} sentences...'.format(len(target_indices)))
+        # print('Target indices:', target_indices)
+        # print('Intervention type:', self.intervention_type.value)
+        # print('Subset size:', self.subset_size)
+        # print('Total sentences in corpus:', len(self.corpus))
 
         for idx in target_indices:
             sentence_data = self.corpus[idx]
@@ -152,7 +152,7 @@ class Intervention:
 
         # Find synonyms from the same semantic cluster
         synonym = self._find_synonym(target_word)
-        print("Found synonym:", synonym)
+        # print("Found synonym:", synonym)
 
         if not synonym or synonym == target_word:
             return None
@@ -207,43 +207,105 @@ class Intervention:
         Returns:
             InterventionResult or None if intervention failed
         """
-        raise NotImplementedError("Subclasses must implement elimination method")
+        sentence_data = self.corpus[idx]
+        sentence = sentence_data['sentence']
+        semantic_roles = sentence_data.get('semantic_roles', {})
+        # print("Applying elimination intervention to sentence:", sentence,)
+        # print("Semantic roles:", semantic_roles)
+
+
+        if not semantic_roles:
+            return None
+
+        # Select a random argument to eliminate
+        available_args = list(semantic_roles.keys())
+        # print("Available semantic roles for elimination:", available_args)
+        if not available_args:
+            return None
+
+        target_arg = random.choice(available_args)
+        role_info = semantic_roles[target_arg]
+
+        target_word = role_info['word']
+        target_role = role_info['role']
+        target_position = role_info['position']
+
+        # Remove the word and handle adjacent function words
+        words = sentence.split()
+        if target_position >= len(words):
+            return None
+
+        modified_words = words.copy()
+
+        # Remove the target word
+        del modified_words[target_position]
+
+        # print('Original sentence:', sentence)
+        # print("Modified words after removal:", modified_words)
+        # Clean up the sentence by updating the others
+        modified_words = self._clean_up_words(modified_words, target_position)
+        # print("Modified words after cleanup:", modified_words)
+        # print('*' * 20)
+
+        if len(modified_words) == 0:
+            return None
+
+        modified_sentence = ' '.join(modified_words)
+        words_removed = len(words) - len(modified_words)
+        return InterventionResult(
+            original_sentence=sentence,
+            modified_sentence=modified_sentence,
+            intervention_type=self.intervention_type.value,
+            target_role=target_role,
+            target_word=target_word,
+            replacement_word=None,
+            position=target_position,
+            metadata={
+                'sentence_idx': idx,
+                'semantic_frame': sentence_data.get('metadata', {}).get('frame'),
+                'elimination_type': 'argument_removal',
+                'words_removed': words_removed,
+                'intervention_success': True
+            }
+        )
+
+
 
     def _find_synonym(self, target_word: str) -> Optional[str]:
-        """
-        Find a synonym for the target word within the same semantic cluster.
+            """
+            Find a synonym for the target word within the same semantic cluster.
 
-        Args:
-            target_word: Word to find synonym for
-        Returns:
-            Synonym word or None if not found
-        """
-        # Extract word category from synthetic word (e.g. "noun1" -> "noun")
-        word_category = self._extract_word_category(target_word)
-        if word_category not in self.semantic_clusters: # we use a fallback here - rand word from the lexicon
-            if word_category in self.lexicon_words:
-                available_words = [w for w in self.lexicon_words[word_category] if w != target_word]
-                if available_words:
-                    return random.choice(available_words)
+            Args:
+                target_word: Word to find synonym for
+            Returns:
+                Synonym word or None if not found
+            """
+            # Extract word category from synthetic word (e.g. "noun1" -> "noun")
+            word_category = self._extract_word_category(target_word)
+            if word_category not in self.semantic_clusters: # we use a fallback here - rand word from the lexicon
+                if word_category in self.lexicon_words:
+                    available_words = [w for w in self.lexicon_words[word_category] if w != target_word]
+                    if available_words:
+                        return random.choice(available_words)
+                    else:
+                        return None
+                else:
+                    return None
+
+            target_cluster = None
+            for cluster_name, cluster_words in self.semantic_clusters[word_category].items():
+                if target_word in cluster_words:
+                    target_cluster = cluster_words
+                    break
+            if target_cluster:
+                # Filter out the target word itself
+                synonyms = [w for w in target_cluster if w != target_word]
+                if synonyms:
+                    return random.choice(synonyms)
                 else:
                     return None
             else:
                 return None
-
-        target_cluster = None
-        for cluster_name, cluster_words in self.semantic_clusters[word_category].items():
-            if target_word in cluster_words:
-                target_cluster = cluster_words
-                break
-        if target_cluster:
-            # Filter out the target word itself
-            synonyms = [w for w in target_cluster if w != target_word]
-            if synonyms:
-                return random.choice(synonyms)
-            else:
-                return None
-        else:
-            return None
 
 
     def _find_role_violating_word(self, target_role: str) -> Optional[str]:
@@ -275,9 +337,12 @@ class Intervention:
         category = re.sub(r'(ed|s|ing)$', '', category)  # Remove common suffixes
         return category
 
-    def _clean_up_function_words(self, words: List[str], removed_position: int) -> List[str]:
+    def _clean_up_words(self, words: List[str], removed_position: int) -> List[str]:
         """
-        Clean up orphaned prepositions, conjunctions after word removal.
+        Clean up prepositions, conjunctions after word removal.
+        "preposition" (e.g., in, on, at)
+        "conjunction" (e.g., and, but, or)
+        "determiner" (e.g., the, a, some)
 
         Args:
             words: List of words after removal
@@ -286,7 +351,38 @@ class Intervention:
         Returns:
             Cleaned list of words
         """
-        raise NotImplementedError("Subclasses must implement _clean_up_function_words method")
+        if not words:
+            return words
+
+        function_words = ['preposition', 'conjunction', 'determiner'] # adding more than the basic ones just in case
+        def is_function_word(word: str) -> bool:
+            # print("Checking if word is a function word:", word)
+            # print("Extracted category:", self._extract_word_category(word))
+            return self._extract_word_category(word) in function_words
+
+
+        # Check position before removal point
+        if removed_position > 0 and removed_position < len(words):
+            # print('Removing adjacent function words at position:', removed_position)
+            # print('Words before removal:', words)
+            # print('len of words:', len(words))
+            prev_word = words[removed_position - 1]
+            # print("Previous word:", prev_word)
+            if prev_word and is_function_word(prev_word):
+                del words[removed_position - 1]
+                # print('updated words after removing previous word:', words)
+                removed_position -= 1
+
+        if removed_position < len(words):
+            next_word = words[removed_position]
+            # print("Next word:", next_word)
+            if next_word and is_function_word(next_word):
+                del words[removed_position]
+                # print('updated words after removing next word:', words)
+
+        return words
+
+
 
     def get_intervention_statistics(self) -> Dict[str, Any]:
         """
