@@ -126,6 +126,7 @@ class Intervention:
             InterventionResult or None if intervention failed
         """
         sentence_data = self.corpus[idx]
+        sentence_data_modified = copy.deepcopy(sentence_data)
         sentence = sentence_data['sentence']
         semantic_roles = sentence_data.get('semantic_roles', {})
         # print("Applying synonymic substitution to sentence:", sentence)
@@ -167,10 +168,34 @@ class Intervention:
             modified_words = words.copy()
             modified_words[target_position] = synonym
             modified_sentence = ' '.join(modified_words)
+            sentence_data_modified['sentence'] = modified_sentence
+
+            if target_arg in sentence_data_modified.get('semantic_roles', {}):
+                sentence_data_modified['semantic_roles'][target_arg]['word'] = synonym
+
+            annotations = sentence_data_modified.get('linguistic_annotations', {})
+            if 'semantic_roles' in annotations:
+                del annotations['semantic_roles'][target_word]
+                annotations['semantic_roles'][synonym] = target_role
+
+            if 'formal_semantics' in annotations:
+                annotations['formal_semantics'] = annotations['formal_semantics'].replace(target_word, synonym)
+            if 'semantics' in sentence_data_modified:
+                # Remove the word from the semantics representation
+                sentence_data_modified['semantics'] = sentence_data_modified['semantics'].replace(target_word, synonym)
+
+            # print('Original sentence:', sentence)
+            # for key, value in sentence_data.items():
+            #     print(f"{key}: {value}")
+            # print("Modified sentence:", modified_sentence)
+            # for key, value in sentence_data_modified.items():
+            #     print(f"Metadata {key}: {value}")
             # print("Modified sentence:", modified_sentence)
             return InterventionResult(
                 original_sentence=sentence,
                 modified_sentence=modified_sentence,
+                original_metadata=sentence_data,
+                modified_metadata=sentence_data_modified,
                 intervention_type=self.intervention_type.value,
                 target_role=target_role,
                 target_word=target_word,
@@ -179,7 +204,8 @@ class Intervention:
                 metadata={
                     'sentence_idx': idx,
                     'semantic_frame': sentence_data.get('metadata', {}).get('frame'),
-                    'intervention_success': True
+                    'intervention_success': True,
+                    'substitution_type': 'synonymic'
                 }
             )
 
@@ -199,6 +225,8 @@ class Intervention:
             InterventionResult or None if intervention failed
         """
         sentence_data = self.corpus[idx]
+        sentence_data_modified = copy.deepcopy(sentence_data)
+
         sentence = sentence_data['sentence']
         semantic_roles = sentence_data.get('semantic_roles', {})
 
@@ -216,10 +244,10 @@ class Intervention:
         target_word = role_info['word']
         target_role = role_info['role']
         target_position = role_info['position']
-        print("Applying role violation to sentence:", sentence)
+        # print("Applying role violation to sentence:", sentence)
 
-        print("Target argument for violation:", target_arg)
-        print("Role info:", role_info)
+        # print("Target argument for violation:", target_arg)
+        # print("Role info:", role_info)
 
         # Find a word that violates the expected role
         violating_word = self._find_role_violating_word(target_role)
@@ -229,17 +257,30 @@ class Intervention:
 
         # Replace the word with the violating word
         words = sentence.split()
-        print("Target word for violation:", target_word)
-        print('original words:', words)
+        # print("Target word for violation:", target_word)
+        # print('original words:', words)
         if target_position < len(words):
             modified_words = words.copy()
             modified_words[target_position] = violating_word
-            print("Modified words after violation:", modified_words)
+            # print("Modified words after violation:", modified_words)
             modified_sentence = ' '.join(modified_words)
+            sentence_data_modified['sentence'] = modified_sentence
+
+            # Update semantic_roles
+            sentence_data_modified['semantic_roles'][target_arg]['word'] = violating_word
+            annotations = sentence_data_modified.get('linguistic_annotations', {})
+            if 'semantic_roles' in annotations:
+                annotations['semantic_roles'].pop(target_word, None)
+                annotations['semantic_roles'][violating_word] = target_role
+
+            if 'formal_semantics' in annotations:
+                annotations['formal_semantics'] = annotations['formal_semantics'].replace(target_word, violating_word)
 
             return InterventionResult(
                 original_sentence=sentence,
                 modified_sentence=modified_sentence,
+                original_metadata=sentence_data,
+                modified_metadata=sentence_data_modified,
                 intervention_type=self.intervention_type.value,
                 target_role=target_role,
                 target_word=target_word,
