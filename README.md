@@ -356,6 +356,11 @@ ABSynth provides comprehensive evaluation metrics:
 
 ABSynth supports applying controlled interventions for interpretability, robustness, and probing studies:
 
+### Supported Interventions
+- **Synonymic Substitution:** Replace an argument with a semantically similar token while preserving the same role.
+- **Role Violation:** Replace an argument with a semantically inconsistent token to create a role mismatch.
+- **Argument Elimination:** Remove an argument and adjacent function words to test role sensitivity.
+
 ```python
 from absynth.intervention import (
     apply_synonymic_substitution,
@@ -374,6 +379,41 @@ intervention = InterventionManager(corpus, "role_violation")
 intervention.export_intervention_dataset(violation_results, "role_violation_dataset.json")
 ```
 
+### Output Schema
+The exported JSON includes:
+- Original and modified sentence
+- Type of intervention
+- Target role and token replaced
+- Position index
+- Rich metadata (e.g. semantic frame, success flag)
+
+```json
+{
+  "intervention_type": "role_violation",
+  "intervention_statistics": {
+    "total": 500,
+    "successful": 472,
+    "failure_rate": 0.056
+  },
+  "results": [
+    {
+      "original_sentence": "noun3 transitive_verb12 noun14",
+      "modified_sentence": "noun3 transitive_verb12 location5",
+      "intervention_type": "role_violation",
+      "target_role": "Patient",
+      "target_word": "noun14",
+      "replacement_word": "location5",
+      "position": 2,
+      "metadata": {
+        "sentence_idx": 3,
+        "semantic_frame": "transitive_action",
+        "violation_type": "role_mismatch",
+        "intervention_success": true
+      }
+    }
+  ]
+}
+```
 
 ## Contributing
 
