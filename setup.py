@@ -16,7 +16,7 @@ def load_requirements() -> list:
 
 setup(
     name='absynth',
-    version='0.1.1',
+    version='0.2.0',
     packages=['absynth', 'absynth.corpus', 'absynth.lexicon', 'absynth.sentence', 'absynth.visualization', 'absynth.intervention'],
     url='',
     license='',
