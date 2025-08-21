@@ -186,9 +186,9 @@ class LexiconGenerator:
             for verb_type in ["transitive_verb", "intransitive_verb"]:
                 if verb_type in self.lexicon:
                     verbs = self.lexicon[verb_type]
-                    verb_clustes = np.array_split(verbs, len(self.semantic_clusters["noun"])) # Split verbs into clusters
+                    verb_clusters = np.array_split(verbs, len(self.semantic_clusters["noun"])) # Split verbs into clusters
 
-                    for i, verb_c in enumerate(verb_clustes):
+                    for i, verb_c in enumerate(verb_clusters):
                         noun_cluster = self.semantic_clusters["noun"][f"cluster_{i}"]
                         for verb in verb_c:
                             for noun in noun_cluster:
@@ -206,12 +206,12 @@ class LexiconGenerator:
             verbs = self.lexicon["transitive_verb"] + self.lexicon.get("intransitive_verb", [])
 
             # Create adverb clusters aligned with verb semantics
-            adverb_clusterss = np.array_split(adverbs, min(self._num_clusters, len(adverbs)))
-            verb_clustes = np.array_split(verbs, min(self._num_clusters, len(adverbs)))
+            adverb_clusters = np.array_split(adverbs, min(self._num_clusters, len(adverbs)))
+            verb_clusters = np.array_split(verbs, min(self._num_clusters, len(adverbs)))
 
-            for i in range(min(len(adverb_clusterss), len(verb_clustes))):
-                adv_cluster = adverb_clusterss[i]
-                verb_cluster = verb_clustes[i]
+            for i in range(min(len(adverb_clusters), len(verb_clusters))):
+                adv_cluster = adverb_clusters[i]
+                verb_cluster = verb_clusters[i]
 
                 for verb in verb_cluster:
                     for adv in adv_cluster:
