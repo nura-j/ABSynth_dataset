@@ -2,8 +2,7 @@ name: ABSYN_dataset
 channels:
   - defaults
 dependencies:
-  - numpy=2.2.5
-  - numpy-base=2.2.5
+  - numpy>=1.26,<2
   - openssl=3.0.16
   - pip=25.1
   - python=3.13.2
